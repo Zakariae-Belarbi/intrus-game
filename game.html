@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Intrus Game — Partie</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/src/styles/main.css">
+  <link rel="stylesheet" href="/src/styles/components.css">
+  <link rel="stylesheet" href="/src/styles/animations.css">
+  <link rel="stylesheet" href="/src/styles/tutorial.css">
+</head>
+<body>
+  <div id="app">
+    
+    <!-- Role Assignment Screen -->
+        <div id="role-screen" class="screen active">
+            <div class="container">
+                <div class="role-card slide-up">
+                    <div class="role-icon" id="role-icon">🎭</div>
+                    <h2 id="role-title">Découvrez votre rôle</h2>
+                    <div class="role-content" id="role-content">
+                        <p>Préparation en cours...</p>
+                    </div>
+                    <button class="primary-btn pop-in" id="role-next-btn" style="animation-delay: 1s">Suivant</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Phase 1 Questions Screen -->
+        <div id="questions-phase1-screen" class="screen">
+            <div class="container">
+                <div class="phase-header">
+                    <div class="banner semi-transparent">
+                        <h2 id="phase1-current-turn">Tour 1 : [Joueur A] → [Joueur B]</h2>
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="phase1-progress"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="split-screen">
+                    <div class="question-section">
+                        <div class="question-input-group">
+                            <input type="text" id="question-input" placeholder="Pose ta question..." class="question-input">
+                            <button class="primary-btn" id="send-question-btn">Envoyer</button>
+                        </div>
+                        <div id="questions-thread" class="questions-thread"></div>
+                    </div>
+                    
+                    <div class="answer-section" id="answer-section">
+                        <div class="waiting-message">En attente de question...</div>
+                    </div>
+                </div>
+                
+                <button class="next-btn" id="phase1-next-btn" style="display: none">Phase suivante</button>
+            </div>
+        </div>
+
+        <!-- Vote Continue Screen -->
+        <div id="vote-continue-screen" class="screen">
+            <div class="container">
+                <div class="vote-container">
+                    <h1 class="vote-title">On passe au vote ?</h1>
+                    <p class="vote-subtitle">Votez oui pour passer au vote final et non pour passer à la deuxième phase de questions</p>
+                    
+                    <div class="vote-buttons">
+                        <button class="vote-btn yes-btn pulse" id="vote-yes-btn">
+                            <span class="vote-icon">✓</span>
+                            Oui
+                        </button>
+                        <button class="vote-btn no-btn pulse" id="vote-no-btn">
+                            <span class="vote-icon">✗</span>
+                            Non
+                        </button>
+                    </div>
+                    
+                    <div class="vote-counter">
+                        <span id="vote-count">0/4</span> votants
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Phase 2 Delegated Questions Screen -->
+        <div id="questions-phase2-screen" class="screen">
+            <div class="container">
+                <div class="phase-header">
+                    <div class="progress-indicator">
+                        <span>Tour <span id="phase2-turn">1</span> / <span id="phase2-total">3</span></span>
+                    </div>
+                    <div class="questioner-tag">
+                        <span class="mic-icon">🎤</span>
+                        Questionneur : <span id="current-questioner">Joueur A</span>
+                    </div>
+                </div>
+                
+                <div class="delegated-question-container">
+                    <div class="target-selection">
+                        <label>Choisir la cible :</label>
+                        <select id="target-select" class="target-dropdown">
+                            <option value="">Sélectionner un joueur</option>
+                        </select>
+                    </div>
+                    
+                    <div class="question-input-group">
+                        <input type="text" id="delegated-question-input" placeholder="Pose ta question..." class="question-input">
+                        <button class="primary-btn" id="ask-delegated-btn">Poser</button>
+                    </div>
+                    
+                    <div id="delegated-thread" class="questions-thread"></div>
+                </div>
+                
+                <button class="next-btn" id="phase2-next-btn" style="display: none">Terminer cette phase</button>
+            </div>
+        </div>
+
+        <!-- Final Vote Screen -->
+        <div id="final-vote-screen" class="screen">
+            <div class="container">
+                <div class="vote-final-container">
+                    <h1 class="vote-title">Qui est l'intrus ?</h1>
+                    <p class="vote-subtitle">Votez pour le joueur que vous soupçonnez</p>
+                    
+                    <div class="suspects-list" id="suspects-list">
+                        <!-- Suspects will be populated dynamically -->
+                    </div>
+                    
+                    <button class="primary-btn" id="submit-vote-btn">Valider mon vote</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Intruder Guess Screen -->
+        <div id="intruder-guess-screen" class="screen">
+            <div class="container">
+                <div class="intruder-guess-container">
+                    <h1 class="intruder-title">🕵️ Vous êtes l'intrus !</h1>
+                    <p class="intruder-subtitle">Devinez l'animal pour gagner 3 points</p>
+                    
+                    <div class="animals-grid" id="animals-grid">
+                        <!-- Animals will be populated dynamically -->
+                    </div>
+                    
+                    <button class="primary-btn" id="submit-guess-btn" disabled>Valider mon choix</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Results Screen -->
+        <div id="results-screen" class="screen">
+            <div class="container">
+                <div class="results-container">
+                    <div class="intruder-reveal flip-card">
+                        <h2>Résultats</h2>
+                        <div class="intruder-info">
+                            <div class="intruder-icon">🐛</div>
+                            <p>L'intrus était</p>
+                            <h3 id="revealed-intruder">Joueur X</h3>
+                        </div>
+                    </div>
+                    
+                    <div class="scores-section">
+                        <h3>Scores finaux</h3>
+                        <div id="scores-table" class="scores-grid">
+                            <!-- Scores will be populated -->
+                        </div>
+                    </div>
+                    
+                    <div class="action-buttons">
+                        <button class="primary-btn bounce" id="play-again-btn">Continuer à jouer</button>
+                        <button class="secondary-btn bounce" id="back-lobby-btn">Retour au lobby</button>
+                        <div id="play-again-counter" style="margin-top: 1rem; font-size: 0.9rem; color: var(--text-secondary);"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        (function () {
+            try {
+            const ctx = JSON.parse(sessionStorage.getItem('intrus_ctx') || '{}');
+            if (ctx.roomId) {
+                // on cache le lobby pendant la reconnexion
+                const s = document.createElement('style');
+                s.textContent = '#lobby-screen{display:none!important}';
+                document.head.appendChild(s);
+            }
+            } catch(e){}
+        })();
+    </script>
+
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+
+<!-- 1) core -->
+<script src="/src/js/game-state.js"></script>
+<script src="/src/js/utils.js"></script>
+
+<!-- 2) écrans nécessaires (PAS DE lobby.js ici) -->
+<script src="/src/js/screens/role-assignment.js"></script>
+<script src="/src/js/screens/questions-phase1.js"></script>
+<script src="/src/js/screens/vote-continue.js"></script>
+<script src="/src/js/screens/questions-phase2.js"></script>
+<script src="/src/js/screens/final-vote.js"></script>
+<script src="/src/js/screens/intruder-guess.js"></script>
+<script src="/src/js/screens/results.js"></script>
+
+<!-- 3) contrôleur global -->
+<script src="/src/js/game-main.js"></script>
+
+<!-- 4) enfin le pont temps réel -->
+<script src="/src/js/realtime.js"></script>
