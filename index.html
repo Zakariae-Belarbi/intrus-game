@@ -365,7 +365,7 @@
         const hasLanguage = window.i18n?.ensureLanguageSelected?.();
         const languageScreen = document.getElementById('language-screen');
         const lobbyScreen = document.getElementById('lobby-screen');
-        let selectedLanguage = window.i18n?.getLanguage?.() || 'fr';
+        let selectedLanguage = window.i18n?.getPreferredLanguage?.() || 'fr';
 
         document.querySelectorAll('.language-option').forEach((btn) => {
           if (btn.dataset.lang === selectedLanguage) btn.classList.add('selected');

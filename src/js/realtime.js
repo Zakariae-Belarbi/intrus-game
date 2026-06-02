@@ -52,6 +52,15 @@
   }
   ctx.name = (ctx.name || '').trim();
 
+  function getSavedScreen() {
+    return sessionStorage.getItem('intrus_last_screen') || '';
+  }
+
+  function shouldKeepRestoredScreen() {
+    const savedScreen = getSavedScreen();
+    return savedScreen && savedScreen !== 'role-screen';
+  }
+
   // -------- socket
   const socket = io();
   window.socket = socket;
@@ -73,11 +82,14 @@
   // -------- events serveur
 
   // setup public
-  socket.on('game:setup', ({ roomId, players } = {}) => {
+  socket.on('game:setup', ({ roomId, players, phase } = {}) => {
     try {
-      L('game:setup', { roomId, players });
+      L('game:setup', { roomId, players, phase });
       window.gameState?.setRoom?.(roomId);
       window.gameState?.setPlayers?.(players);
+      if (phase && window.gameState) {
+        window.gameState.gamePhase = phase;
+      }
       window.gameState?.setCurrentPlayerByName?.(ctx.name);
       // notifier les écrans qui attendent les joueurs
       document.dispatchEvent(new CustomEvent('state:players'));
@@ -100,14 +112,16 @@
         window.QuestionsPhase1Screen.phaseStarted = false;
       }
 
-      // Navigation vers l'écran de rôle
-      if (window.intrusGame?.navigateTo) {
-        intrusGame.navigateTo('role-screen');
-      } else {
-        window.Utils?.showScreen?.('role-screen', 'slide');
+      if (!shouldKeepRestoredScreen()) {
+        // Navigation vers l'écran de rôle
+        if (window.intrusGame?.navigateTo) {
+          intrusGame.navigateTo('role-screen');
+        } else {
+          window.Utils?.showScreen?.('role-screen', 'slide');
+        }
+
+        window.RoleAssignmentScreen?.displayRole?.();
       }
-      
-      window.RoleAssignmentScreen?.displayRole?.();
     } catch (e) {
       console.error('[realtime] game:role error', e);
     }
@@ -426,6 +440,7 @@
     L('play:again:confirmed');
     
     window.Utils?.showNotification?.(t('results.new_game_soon'), 'success');
+    sessionStorage.removeItem('intrus_last_screen');
     
     // Préparer l'interface pour la nouvelle partie
     setTimeout(() => {

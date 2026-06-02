@@ -644,7 +644,8 @@ document.addEventListener('DOMContentLoaded', () => {
     sessionStorage.setItem('intrus_ctx', JSON.stringify({
       roomId,
       name:   myName,     // <<< PAS nameInput.value
-      avatar: myAvatar    // <<< PAS un emoji fixe
+      avatar: myAvatar,   // <<< PAS un emoji fixe
+      lang: window.i18n?.getLanguage?.() || 'fr'
     }));
     window.location.href = '/game';
   });

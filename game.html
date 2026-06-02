@@ -182,7 +182,7 @@
     <script>
         (function () {
             try {
-            if (!localStorage.getItem('intrus_language')) {
+            if (!sessionStorage.getItem('intrus_player_language')) {
                 window.location.href = '/';
                 return;
             }

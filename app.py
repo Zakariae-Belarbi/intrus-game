@@ -177,6 +177,47 @@ def _relink_sid(room, old_sid, new_sid):
     if v.get('kind') == 'continue' and isinstance(v.get('votes'), dict):
         if old_sid in v['votes']:
             v['votes'][new_sid] = v['votes'].pop(old_sid)
+    ready = g.get('ready_players')
+    if isinstance(ready, set) and old_sid in ready:
+        ready.remove(old_sid)
+        ready.add(new_sid)
+    phase2 = g.get('phase2_state') or {}
+    for key in ('current_questioner', 'current_target', 'previous_questioner'):
+        if phase2.get(key) == old_sid:
+            phase2[key] = new_sid
+    if isinstance(phase2.get('all_players'), list):
+        phase2['all_players'] = [new_sid if sid == old_sid else sid for sid in phase2['all_players']]
+    fv = g.get('final_vote') or {}
+    if isinstance(fv.get('votes'), dict):
+        if old_sid in fv['votes']:
+            fv['votes'][new_sid] = fv['votes'].pop(old_sid)
+        for voter_sid, suspect_sid in list(fv['votes'].items()):
+            if suspect_sid == old_sid:
+                fv['votes'][voter_sid] = new_sid
+    scores = room.get('cumulative_scores')
+    if isinstance(scores, dict) and old_sid in scores:
+        scores[new_sid] = scores.pop(old_sid)
+    play_again_votes = room.get('play_again_votes')
+    if isinstance(play_again_votes, set) and old_sid in play_again_votes:
+        play_again_votes.remove(old_sid)
+        play_again_votes.add(new_sid)
+    payload = g.get('last_results_payload')
+    if isinstance(payload, dict):
+        intruder = payload.get('intruder')
+        if isinstance(intruder, dict) and intruder.get('id') == old_sid:
+            intruder['id'] = new_sid
+        for key in ('votes', 'voteCounts', 'scores', 'cumulativeScores'):
+            values = payload.get(key)
+            if isinstance(values, dict):
+                if old_sid in values:
+                    values[new_sid] = values.pop(old_sid)
+                for k, v in list(values.items()):
+                    if v == old_sid:
+                        values[k] = new_sid
+        if payload.get('mostVoted') == old_sid:
+            payload['mostVoted'] = new_sid
+        if isinstance(payload.get('winners'), list):
+            payload['winners'] = [new_sid if winner == old_sid else winner for winner in payload['winners']]
 
 def _emit_setup_and_role(room, sid):
     g = room.get('game') or {}
@@ -262,6 +303,78 @@ def _emit_vote_state_to(room, sid):
     no  = sum(1 for v in vote.get('votes', {}).values() if v == 'no')
     socketio.emit("vote:continue:start",  {"roomId": room['id'], "total": total, "timeout": VOTE_CONTINUE_TIMEOUT}, to=sid)
     socketio.emit("vote:continue:update", {"roomId": room['id'], "count": count, "total": total, "yes": yes, "no": no}, to=sid)
+
+def _emit_phase_state_to(room, sid):
+    if not room or "game" not in room:
+        return
+    g = room.get('game') or {}
+    phase = g.get('phase')
+
+    if phase == 'phase1':
+        if g.get('phase_started'):
+            _emit_current_turn_to(room, sid)
+        return
+
+    if phase == 'vote_continue':
+        _emit_vote_state_to(room, sid)
+        return
+
+    if phase == 'phase2':
+        state = g.get('phase2_state') or {}
+        all_players = state.get('all_players') or []
+        sids_in_room = {p["id"] for p in room["players"] if not p.get('offline')}
+        questioner_sid = state.get('current_questioner')
+        previous_questioner = state.get('previous_questioner')
+        available_targets = [
+            p for p in all_players
+            if p in sids_in_room and p != questioner_sid and p != previous_questioner
+        ]
+        socketio.emit("phase2:start", {
+            "roomId": room['id'],
+            "players": _public_players(room),
+            "totalTurns": state.get('max_turns', len(all_players))
+        }, to=sid)
+        socketio.emit("phase2:turn", {
+            "roomId": room['id'],
+            "questionerId": questioner_sid,
+            "availableTargets": [{"id": tid} for tid in available_targets],
+            "turnIndex": state.get('turn_count', 0),
+            "totalTurns": state.get('max_turns', len(all_players))
+        }, to=sid)
+        if state.get('current_question') and state.get('current_target'):
+            socketio.emit("phase2:asked", {
+                "roomId": room['id'],
+                "questionerId": questioner_sid,
+                "targetId": state.get('current_target'),
+                "question": state.get('current_question')
+            }, to=sid)
+        return
+
+    if phase == 'final_vote':
+        fv = g.get('final_vote') or {}
+        if sid == g.get('intruder_sid'):
+            socketio.emit("intruder:guess_animal", {
+                "roomId": room['id'],
+                "animals": fv.get('animal_choices', [])
+            }, to=sid)
+        else:
+            total = fv.get('expected', 0)
+            socketio.emit("final_vote:start", {
+                "roomId": room['id'],
+                "suspects": _public_players(room),
+                "total": total
+            }, to=sid)
+            socketio.emit('final_vote:update', {
+                'roomId': room['id'],
+                'count': len(fv.get('votes', {})),
+                'total': total
+            }, to=sid)
+        return
+
+    if phase == 'results':
+        payload = g.get('last_results_payload')
+        if payload:
+            socketio.emit("game:results", payload, to=sid)
 
 def _end_continue_vote(room):
     """Clôture le vote et enchaîne la suite."""
@@ -756,7 +869,7 @@ def _calculate_and_send_results(room):
     games_played = room['games_played']
     
     # Émettre les résultats
-    socketio.emit("game:results", {
+    results_payload = {
         "roomId": room["id"],
         "intruder": {
             "id": intruder_obj.get('id') if intruder_obj else None,
@@ -774,12 +887,13 @@ def _calculate_and_send_results(room):
         "cumulativeScores": cumulative_scores,  # Scores totaux
         "gamesPlayed": games_played,  # Nombre de parties jouées
         "winners": winners
-    }, room=room["id"])
+    }
+    g['phase'] = 'results'
+    g['last_results_payload'] = results_payload
+    socketio.emit("game:results", results_payload, room=room["id"])
     
     print(f"[results] sent: intruder_caught={intruder_caught}, intruder_guessed={intruder_guessed_correctly}, scores={scores}, cumulative={cumulative_scores}, games={games_played}, winners={winners}", flush=True)
     
-    g['phase'] = 'results'
-
 # ---------------------------------------------------------------------
 # Routes
 # ---------------------------------------------------------------------
@@ -963,12 +1077,7 @@ def on_room_join(data):
         if room.get('status') == 'started' and room.get('game'):
             _relink_sid(room, old_sid, request.sid)
             _emit_setup_and_role(room, request.sid)
-
-            g = room['game']
-            if g.get('phase') == 'phase1':
-                _emit_current_turn_to(room, request.sid)
-            elif g.get('phase') == 'vote_continue':
-                _emit_vote_state_to(room, request.sid)
+            _emit_phase_state_to(room, request.sid)
 
         socketio.emit('room:update', _public_players(room), room=room_id)
         return

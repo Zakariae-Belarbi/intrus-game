@@ -657,7 +657,8 @@ verifyBtn.addEventListener('click', function () {
       sessionStorage.setItem('intrus_ctx', JSON.stringify({
         roomId: validId,
         name:   currentName,
-        avatar: currentAvatar
+        avatar: currentAvatar,
+        lang: window.i18n?.getLanguage?.() || 'fr'
       }));
     })
     .catch(() => {
@@ -723,7 +724,8 @@ verifyBtn.addEventListener('click', function () {
     sessionStorage.setItem('intrus_ctx', JSON.stringify({
       roomId,
       name: currentName,
-      avatar: currentAvatar
+      avatar: currentAvatar,
+      lang: window.i18n?.getLanguage?.() || 'fr'
     }));
     // basculer sur la page principale (le jeu)
     window.location.href = '/game';

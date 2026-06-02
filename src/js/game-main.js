@@ -1,13 +1,15 @@
 // src/js/game-main.js
 class IntrusGameApp {
   constructor() {
-    this.currentScreen = 'role-screen'; // par défaut sur la page game.html
+    this.screenStorageKey = 'intrus_last_screen';
+    this.currentScreen = sessionStorage.getItem(this.screenStorageKey) || 'role-screen';
     this.init();
   }
 
   init() {
     this.setupGlobalEventListeners();
     this.initializeScreens();
+    this.restoreSavedScreen();
     // pas de "welcome animation" ici
   }
 
@@ -35,6 +37,13 @@ class IntrusGameApp {
     if (window.QuestionsPhase2Screen?.init) QuestionsPhase2Screen.init();
     if (window.FinalVoteScreen?.init) FinalVoteScreen.init();
     if (window.ResultsScreen?.init) ResultsScreen.init();
+  }
+
+  restoreSavedScreen() {
+    const targetScreen = document.getElementById(this.currentScreen);
+    if (!targetScreen) return;
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    targetScreen.classList.add('active');
   }
 
   showHelp() {
@@ -65,6 +74,7 @@ class IntrusGameApp {
 
   navigateTo(screenId, data = null) {
     this.currentScreen = screenId;
+    sessionStorage.setItem(this.screenStorageKey, screenId);
     
     // Cacher tous les écrans
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));

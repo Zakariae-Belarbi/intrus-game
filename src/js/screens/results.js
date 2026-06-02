@@ -450,6 +450,8 @@ const ResultsScreen = {
         
         // Nettoyer le contexte
         sessionStorage.removeItem('intrus_ctx');
+        sessionStorage.removeItem('intrus_last_screen');
+        window.i18n?.clearSessionLanguage?.();
         
         setTimeout(() => {
             window.location.href = '/';

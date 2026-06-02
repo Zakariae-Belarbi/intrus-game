@@ -307,7 +307,7 @@ const translations = {
     "join.players_in_room": "joueurs f la salle",
     "join.waiting": "tsna...",
     "join.waiting_for_players": "tsna {count} joueur(s)...",
-    "join.starting_soon": "ghadi nbda",
+    "join.starting_soon": "ghadi nbdaw",
     "join.id_copied": "Code tcopya, sift lihom",
     "join.enter_pseudo": "dkhel smytk",
     "join.pseudo_min": "smytk khasha au moins 2 caractères",
@@ -366,12 +366,12 @@ const translations = {
     "role.intruder_title": "nta l'intrus, matfrchhach HHH",
     "role.not_intruder_title": "machi nta l'intrus",
     "role.your_mission": "mission dialk :",
-    "role.intruder_mission_1": "7awl tl9a l animal bla mayfi9o bik",
-    "role.intruder_mission_2": "swel so2alat bach tl9a l animal",
+    "role.intruder_mission_1": "7awl tl9a l animal bla may3i9o bik",
+    "role.intruder_mission_2": "swel as2ila bach tl9a l animal",
     "role.intruder_mission_3": "matban.ch mchkok bzaf",
     "role.secret_animal_unknown": "l animal : khassek tl9ah",
     "role.normal_mission_1": "7awl tl9a chkoun l'intrus",
-    "role.normal_mission_2": "st3ml l animal bach tswel so2alat",
+    "role.normal_mission_2": "st3ml l animal bach tswel as2ila",
     "role.normal_mission_3": "chof jawabat dial lakhrin mzyan",
     "role.secret_animal_is": "l animal dialkom howa : {animal}",
     "role.waiting_others": "tsna lakhrin",
@@ -389,8 +389,8 @@ const translations = {
     "phase1.answer": "Jawb :",
     "phase1.waiting_answer": "tsna jawab dial {name}...",
     "phase1.response": "Jawab :",
-    "phase1.yes": "ysser HHH",
-    "phase1.no": "la mazal",
+    "phase1.yes": "oui",
+    "phase1.no": "non",
     "phase1.next_turn": "tour jay f 3 secondes...",
     "phase1.enter_question": "ktb chi so2al",
     "phase1.not_your_turn": "machi noba dialk tswel",
@@ -419,7 +419,7 @@ const translations = {
     "continue_vote.vote_not_counted": "vote matsjelch ({why})",
 
     // Phase 2 questions
-    "phase2.title": "Phase 2 : so2alat okhrin",
+    "phase2.title": "Phase 2 : as2ila okhrin",
     "phase2.finished": "phase 2 salat",
     "phase2.turn": "Tour",
     "phase2.questioner": "li ghadi yswel :",
@@ -493,10 +493,10 @@ const translations = {
     "tutorial.step1_text": "khass au min 3 joueurs. wa7d ycree salle w ysift code l lakhrin.",
     "tutorial.step2_title": "2. chof role dialk",
     "tutorial.step2_text": "kol joueur kayakhod animal. wa7d kaykon howa l'intrus w 3ndo animal akhor.",
-    "tutorial.step3_title": "3. swlo so2alat",
-    "tutorial.step3_text": "swlo so2alat b Oui/Non bach tl9aw l'intrus.",
+    "tutorial.step3_title": "3. swlo as2ila",
+    "tutorial.step3_text": "swlo as2ila b Oui/Non bach tl9aw l'intrus.",
     "tutorial.step4_title": "4. votiw 3la l'intrus",
-    "tutorial.step4_text": "mn b3d so2alat, votiw 3la li kayban likom howa l'intrus.",
+    "tutorial.step4_text": "mn b3d as2ila, votiw 3la li kayban likom howa l'intrus.",
     "tutorial.start": "bda tl3b",
 
     // Help
@@ -504,7 +504,7 @@ const translations = {
     "help.rules_title": "rules dial l game :",
     "help.rule1": "wa7d joueur kaykon howa l'intrus",
     "help.rule2": "lakhrin khasshom yl9aw chkoun howa",
-    "help.rule3": "swlo so2alat bach tfi9o b jawabat li fihom chk",
+    "help.rule3": "swlo as2ila bach tfi9o b jawabat li fihom chk",
     "help.rule4": "f lakher votiw 3la l'intrus",
     "help.close": "sdd"
   }
@@ -512,15 +512,24 @@ const translations = {
 
 (function () {
   const STORAGE_KEY = 'intrus_language';
+  const SESSION_KEY = 'intrus_player_language';
   const DEFAULT_LANGUAGE = 'fr';
 
   function getLanguage() {
+    const sessionLang = sessionStorage.getItem(SESSION_KEY);
+    if (translations[sessionLang]) return sessionLang;
+    const saved = localStorage.getItem(STORAGE_KEY);
+    return translations[saved] ? saved : DEFAULT_LANGUAGE;
+  }
+
+  function getPreferredLanguage() {
     const saved = localStorage.getItem(STORAGE_KEY);
     return translations[saved] ? saved : DEFAULT_LANGUAGE;
   }
 
   function setLanguage(lang) {
     const nextLang = translations[lang] ? lang : DEFAULT_LANGUAGE;
+    sessionStorage.setItem(SESSION_KEY, nextLang);
     localStorage.setItem(STORAGE_KEY, nextLang);
     document.documentElement.lang = nextLang === 'darija' ? 'ary' : 'fr';
     applyTranslations();
@@ -559,7 +568,12 @@ const translations = {
   }
 
   function ensureLanguageSelected() {
-    return !!localStorage.getItem(STORAGE_KEY);
+    const sessionLang = sessionStorage.getItem(SESSION_KEY);
+    return !!translations[sessionLang];
+  }
+
+  function clearSessionLanguage() {
+    sessionStorage.removeItem(SESSION_KEY);
   }
 
   function serverMessage(message) {
@@ -582,7 +596,7 @@ const translations = {
   }
 
   window.translations = translations;
-  window.i18n = { getLanguage, setLanguage, t, applyTranslations, ensureLanguageSelected, serverMessage };
+  window.i18n = { getLanguage, getPreferredLanguage, setLanguage, t, applyTranslations, ensureLanguageSelected, clearSessionLanguage, serverMessage };
   window.t = t;
 
   document.addEventListener('DOMContentLoaded', () => applyTranslations());
