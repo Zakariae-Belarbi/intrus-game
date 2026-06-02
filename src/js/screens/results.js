@@ -88,11 +88,12 @@ const ResultsScreen = {
                 const intruderInfo = intruderReveal.querySelector('.intruder-info');
                 const animalResult = document.createElement('div');
                 animalResult.style.cssText = 'margin-top: 1rem; padding: 1rem; background: rgba(255,255,255,0.9); border-radius: 12px;';
+                const safeCorrectAnimal = Utils.escapeHTML(correctAnimal);
                 
                 if (intruderGuessedCorrectly) {
                     animalResult.innerHTML = `
                         <p style="font-size: 0.9rem; color: var(--success); font-weight: 600;">
-                            ✅ L'intrus a trouvé l'animal : ${correctAnimal}
+                            ✅ L'intrus a trouvé l'animal : ${safeCorrectAnimal}
                         </p>
                     `;
                 } else {
@@ -101,7 +102,7 @@ const ResultsScreen = {
                             ❌ L'intrus n'a pas trouvé l'animal
                         </p>
                         <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.5rem;">
-                            L'animal était : ${correctAnimal}
+                            L'animal était : ${safeCorrectAnimal}
                         </p>
                     `;
                 }
@@ -214,8 +215,10 @@ const ResultsScreen = {
         });
         
         sortedPlayers.forEach((player, index) => {
-            const score = scores[player.id] || 0;
-            const cumulScore = cumulativeScores ? (cumulativeScores[player.id] || 0) : null;
+            const score = Number(scores[player.id] || 0);
+            const cumulScore = cumulativeScores ? Number(cumulativeScores[player.id] || 0) : null;
+            const safeAvatar = Utils.escapeHTML(player.avatar || '🙂');
+            const safeName = Utils.escapeHTML(player.name || 'Joueur');
             
             const scoreCard = Utils.createElement('div', 'score-card fade-in hover-lift');
             scoreCard.style.animationDelay = `${index * 0.1}s`;
@@ -253,8 +256,8 @@ const ResultsScreen = {
             }
             
             scoreCard.innerHTML = `
-                <div class="score-avatar">${player.avatar || '🙂'}</div>
-                <div class="score-name">${player.name || 'Joueur'}</div>
+                <div class="score-avatar">${safeAvatar}</div>
+                <div class="score-name">${safeName}</div>
                 ${badge ? `<div class="score-badge">${badge}</div>` : ''}
                 ${scoreHTML}
             `;

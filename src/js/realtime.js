@@ -461,6 +461,10 @@
           let errorMsg = 'Question non envoyée';
           if (ack.reason === 'invalid_question') {
             errorMsg = 'Question invalide (minimum 2 caractères)';
+          } else if (ack.reason === 'question_too_long') {
+            errorMsg = 'Question trop longue (200 caractères max)';
+          } else if (ack.reason === 'question_forbidden_chars') {
+            errorMsg = 'La question contient des caractères interdits';
           } else if (ack.reason === 'not_your_turn') {
             errorMsg = "Ce n'est pas votre tour";
           } else if (ack.reason === 'invalid_target') {

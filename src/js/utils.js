@@ -12,6 +12,24 @@ const Utils = {
         return element;
     },
 
+    escapeHTML(value) {
+        return String(value ?? '').replace(/[&<>"']/g, (char) => ({
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#39;'
+        }[char]));
+    },
+
+    hasHTMLChars(value) {
+        return /[<>&"'`]/.test(String(value ?? ''));
+    },
+
+    setSafeHTML(element, html) {
+        if (element) element.innerHTML = html;
+    },
+
     // Animation Helpers
     fadeIn(element, delay = 0) {
         element.style.opacity = '0';
@@ -93,7 +111,7 @@ const Utils = {
     // Form Validation
     validatePlayerName(name) {
         const trimmed = name.trim();
-        return trimmed.length >= 2 && trimmed.length <= 20;
+        return trimmed.length >= 2 && trimmed.length <= 20 && !this.hasHTMLChars(trimmed);
     },
 
     validateRoomId(roomId) {

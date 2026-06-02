@@ -122,6 +122,7 @@ const RoleAssignmentScreen = {
         animalDisplay = String(animal);
       }
     }
+    const safeAnimalDisplay = Utils.escapeHTML(animalDisplay);
 
     setTimeout(() => { roleIcon.textContent = '👥'; Utils.bounce(roleIcon); }, 200);
 
@@ -138,7 +139,7 @@ const RoleAssignmentScreen = {
         <p>Utilisez l'animal secret pour poser des questions piège.</p>
         <p>Observez les réactions et réponses des autres.</p>
         <div class="animal-reveal">
-          L'animal secret est : <strong>${animalDisplay}</strong>
+          L'animal secret est : <strong>${safeAnimalDisplay}</strong>
         </div>
       `;
       Utils.slideUp(roleContent);

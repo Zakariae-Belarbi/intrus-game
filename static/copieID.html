@@ -550,6 +550,14 @@ document.addEventListener('DOMContentLoaded', function () {
     return animals[Math.floor(Math.random() * animals.length)];
   }
 
+  const escapeHTML = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+  }[char]));
+
   // MAJ joueurs reçue du serveur
   socket.on('room:update', list => {
     players = list;
@@ -559,8 +567,8 @@ document.addEventListener('DOMContentLoaded', function () {
       const card = document.createElement('div');
       card.className = 'player-card';
       card.innerHTML = `
-        <div class="player-avatar">${p.avatar || '🙂'}</div>
-        <div class="player-name">${p.name || '???'}</div>
+        <div class="player-avatar">${escapeHTML(p.avatar || '🙂')}</div>
+        <div class="player-name">${escapeHTML(p.name || '???')}</div>
       `;
       playersGrid.appendChild(card);
     });
@@ -591,6 +599,14 @@ verifyBtn.addEventListener('click', function () {
   
   if (playerName.length < 2) {
     showNotification('Le pseudo doit contenir au moins 2 caractères !', 'warning');
+    verifyBtn.disabled = false;
+    verifyBtn.textContent = 'Vérifier';
+    if (playerInput) playerInput.focus();
+    return;
+  }
+
+  if (playerName.length > 20 || /[<>&"'`]/.test(playerName)) {
+    showNotification('Le pseudo contient des caractères interdits ou dépasse 20 caractères.', 'warning');
     verifyBtn.disabled = false;
     verifyBtn.textContent = 'Vérifier';
     if (playerInput) playerInput.focus();
@@ -684,7 +700,7 @@ verifyBtn.addEventListener('click', function () {
     notification.className = `notification ${type}`;
     notification.innerHTML = `
       <div class="notification-icon">${type === 'success' ? '✅' : type === 'error' ? '❌' : type === 'warning' ? '⚠️' : 'ℹ️'}</div>
-      <div class="notification-content">${message}</div>
+      <div class="notification-content">${escapeHTML(message)}</div>
     `;
     document.body.appendChild(notification);
     

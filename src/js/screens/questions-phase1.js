@@ -110,12 +110,15 @@
 
     // Question posée (broadcast serveur)
     onAsked({ text, asker, target }) {
+      const safeText = Utils?.escapeHTML ? Utils.escapeHTML(text) : String(text || '');
+      const safeAsker = this._safeNameOf(asker);
+      const safeTarget = this._safeNameOf(target);
       const thread = $id('questions-thread');
       if (thread) {
         const bubble = makeEl('div', 'question-bubble slide-in-left');
         bubble.innerHTML = `
-          <div class="bubble-author">${this._nameOf(asker)} → ${this._nameOf(target)}</div>
-          <div class="bubble-content">${text}</div>
+          <div class="bubble-author">${safeAsker} → ${safeTarget}</div>
+          <div class="bubble-content">${safeText}</div>
         `;
         thread.appendChild(bubble);
         thread.scrollTop = thread.scrollHeight;
@@ -129,7 +132,7 @@
           ansBox.innerHTML = `
             <div class="answer-prompt">
               <h4>Répondez :</h4>
-              <p class="question-repeat">"${text}"</p>
+              <p class="question-repeat">"${safeText}"</p>
             </div>
             <div class="answer-buttons">
               <button class="answer-btn yes" id="ans-yes">✓ Oui</button>
@@ -146,7 +149,7 @@
         // Sinon, indiquer visuellement qu'on attend la réponse de la cible
         const ansBox = $id('answer-section');
         if (ansBox) {
-          ansBox.innerHTML = `<div class="waiting-message">En attente de la réponse de <b>${this._nameOf(target)}</b>…</div>`;
+          ansBox.innerHTML = `<div class="waiting-message">En attente de la réponse de <b>${safeTarget}</b>…</div>`;
         }
       }
 
@@ -170,7 +173,7 @@
       if (thread) {
         const bubble = makeEl('div', 'answer-bubble slide-in-right');
         bubble.innerHTML = `
-          <div class="bubble-author">${this._nameOf(target)}</div>
+          <div class="bubble-author">${this._safeNameOf(target)}</div>
           <div class="bubble-content"><strong>${/yes|oui/i.test(answer) ? 'Oui' : 'Non'}</strong></div>
         `;
         thread.appendChild(bubble);
@@ -214,6 +217,12 @@
 
       if (text.length > 200) {
         Utils?.showNotification?.('Question trop longue (200 caractères max)', 'error');
+        Utils?.playErrorSound?.();
+        return;
+      }
+
+      if (Utils?.hasHTMLChars?.(text)) {
+        Utils?.showNotification?.('La question contient des caractères interdits', 'error');
         Utils?.playErrorSound?.();
         return;
       }
@@ -324,6 +333,10 @@
     _nameOf(sid) {
       const p = window.gameState?.players?.find(p => p.id === sid);
       return p?.name || 'Joueur';
+    },
+
+    _safeNameOf(sid) {
+      return Utils?.escapeHTML ? Utils.escapeHTML(this._nameOf(sid)) : this._nameOf(sid);
     },
 
     show() {

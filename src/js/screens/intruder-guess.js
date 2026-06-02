@@ -53,8 +53,8 @@ const IntruderGuessScreen = {
             `;
             
             // Gérer l'animal en tant qu'objet {emoji, name} ou string
-            const emoji = animal.emoji || animal;
-            const name = animal.name || '';
+            const emoji = Utils.escapeHTML(animal.emoji || animal);
+            const name = Utils.escapeHTML(animal.name || '');
             
             animalOption.innerHTML = `
                 <div style="font-size: 3rem;">${emoji}</div>

@@ -171,6 +171,18 @@ const QuestionsPhase2Screen = {
             return;
         }
 
+        if (question.length > 200) {
+            Utils.showNotification?.('Question trop longue (200 caractères max)', 'error');
+            Utils.playErrorSound?.();
+            return;
+        }
+
+        if (Utils.hasHTMLChars?.(question)) {
+            Utils.showNotification?.('La question contient des caractères interdits', 'error');
+            Utils.playErrorSound?.();
+            return;
+        }
+
         if (!targetId) {
             Utils.showNotification?.('Veuillez sélectionner une cible', 'error');
             Utils.playErrorSound?.();
@@ -394,17 +406,20 @@ const QuestionsPhase2Screen = {
     displayQuestion(questioner, target, question) {
         const thread = Utils.getElementById('delegated-thread');
         if (!thread) return;
+        const safeQuestioner = this.escape(questioner?.name || 'Joueur');
+        const safeTarget = this.escape(target?.name || 'Joueur');
+        const safeQuestion = this.escape(question);
         
         const questionBubble = document.createElement('div');
         questionBubble.className = 'question-bubble';
         questionBubble.style.cssText = 'margin-bottom: 1rem; padding: 1rem; background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%); border-radius: 12px; border-left: 4px solid var(--primary); animation: slideInLeft 0.4s ease;';
         questionBubble.innerHTML = `
             <div style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.5rem;">
-                <strong>${questioner?.name || 'Joueur'}</strong> 
+                <strong>${safeQuestioner}</strong>
                 <span style="color: var(--primary);">→</span> 
-                <strong>${target?.name || 'Joueur'}</strong>
+                <strong>${safeTarget}</strong>
             </div>
-            <div style="font-size: 1rem; color: var(--text-primary); font-weight: 500;">${question}</div>
+            <div style="font-size: 1rem; color: var(--text-primary); font-weight: 500;">${safeQuestion}</div>
         `;
         
         thread.appendChild(questionBubble);
@@ -415,15 +430,17 @@ const QuestionsPhase2Screen = {
     displayAnswer(target, answer) {
         const thread = Utils.getElementById('delegated-thread');
         if (!thread) return;
+        const safeTarget = this.escape(target?.name || 'Joueur');
+        const safeAnswer = answer === 'Oui' ? 'Oui' : 'Non';
         
         const answerBubble = document.createElement('div');
         answerBubble.className = 'answer-bubble';
         answerBubble.style.cssText = 'margin-bottom: 1.5rem; padding: 1rem; background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%); border-radius: 12px; border-left: 4px solid var(--success); animation: slideInRight 0.4s ease; margin-left: 2rem;';
         answerBubble.innerHTML = `
             <div style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.5rem;">
-                <strong>${target?.name || 'Joueur'}</strong> répond :
+                <strong>${safeTarget}</strong> répond :
             </div>
-            <div style="font-size: 1.1rem; font-weight: 600; color: var(--success);">${answer}</div>
+            <div style="font-size: 1.1rem; font-weight: 600; color: var(--success);">${safeAnswer}</div>
         `;
         
         thread.appendChild(answerBubble);
@@ -439,6 +456,10 @@ const QuestionsPhase2Screen = {
             thread.appendChild(warningMsg);
             thread.scrollTop = thread.scrollHeight;
         }, 100);
+    },
+
+    escape(value) {
+        return Utils?.escapeHTML ? Utils.escapeHTML(value) : String(value ?? '');
     },
 
     show() {

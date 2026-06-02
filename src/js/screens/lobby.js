@@ -157,10 +157,12 @@ const LobbyScreen = {
         gameState.players.forEach((player, index) => {
             const playerCard = Utils.createElement('div', 'player-card fade-in');
             playerCard.style.animationDelay = `${index * 0.1}s`;
+            const safeAvatar = Utils.escapeHTML(player.avatar);
+            const safeName = Utils.escapeHTML(Utils.truncateText(player.name, 12));
             
             playerCard.innerHTML = `
-                <div class="player-avatar">${player.avatar}</div>
-                <div class="player-name">${Utils.truncateText(player.name, 12)}</div>
+                <div class="player-avatar">${safeAvatar}</div>
+                <div class="player-name">${safeName}</div>
             `;
 
             // Add hover effect

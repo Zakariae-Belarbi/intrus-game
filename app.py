@@ -12,7 +12,18 @@ from flask_socketio import SocketIO, join_room, leave_room
 # ---------------------------------------------------------------------
 app = Flask(__name__, static_folder='static', static_url_path='/static')
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'secret!')  # Use env variable in production
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet')
+_cors_origins = os.environ.get('SOCKETIO_CORS_ORIGINS', '*')
+if _cors_origins != '*':
+    _cors_origins = [origin.strip() for origin in _cors_origins.split(',') if origin.strip()]
+socketio = SocketIO(app, cors_allowed_origins=_cors_origins, async_mode='eventlet')
+
+@app.after_request
+def add_security_headers(response):
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-Frame-Options'] = 'DENY'
+    response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+    response.headers['Permissions-Policy'] = 'camera=(), microphone=(), geolocation=()'
+    return response
 
 # ---------------------------------------------------------------------
 # Mémoire & constantes
@@ -34,6 +45,7 @@ ANIMALS = [
     {'emoji': '🐱', 'name': 'Chat'}
 ]
 VOTE_CONTINUE_TIMEOUT = 30  # secondes
+FORBIDDEN_TEXT_CHARS = set("<>&\"'`")
 
 # ---------------------------------------------------------------------
 # Utils
@@ -55,6 +67,37 @@ def build_turns(player_sids):
     random.shuffle(sids)
     n = len(sids)
     return [{"q": sids[i], "t": sids[(i + 1) % n]} for i in range(n)]
+
+def _has_forbidden_text(value: str) -> bool:
+    return any(ch in FORBIDDEN_TEXT_CHARS or ord(ch) < 32 or ord(ch) == 127 for ch in value)
+
+def _validate_player_name(name: str):
+    name = str(name or '').strip()
+    if not name:
+        return None, 'Veuillez entrer un pseudo'
+    if len(name) < 2:
+        return None, 'Le pseudo doit contenir au moins 2 caractères'
+    if len(name) > 20:
+        return None, 'Le pseudo doit contenir 20 caractères maximum'
+    if _has_forbidden_text(name):
+        return None, 'Le pseudo contient des caractères interdits'
+    return name, None
+
+def _clean_avatar(avatar):
+    avatar = str(avatar or '🙂').strip()
+    if not avatar or len(avatar) > 8 or _has_forbidden_text(avatar):
+        return '🙂'
+    return avatar
+
+def _validate_question(text: str, max_len=200):
+    text = str(text or '').strip()
+    if len(text) < 2:
+        return None, 'invalid_question'
+    if len(text) > max_len:
+        return None, 'question_too_long'
+    if _has_forbidden_text(text):
+        return None, 'question_forbidden_chars'
+    return text, None
 
 # ---------------------------------------------------------------------
 # Orchestration des tours
@@ -377,11 +420,11 @@ def on_phase2_ask(data):
     data = data or {}
     room_id = data.get('roomId')
     target_sid = data.get('targetId')
-    question = data.get('question', '').strip()
+    question, question_error = _validate_question(data.get('question', ''), max_len=200)
     
     # Validation de la question
-    if not question or len(question) < 2:
-        return {'ok': False, 'reason': 'invalid_question'}
+    if question_error:
+        return {'ok': False, 'reason': question_error}
     
     room = rooms.get(room_id)
     if not room or 'game' not in room:
@@ -849,15 +892,12 @@ def _noop(_=None):
 def on_room_create(data):
     data = data or {}
     room_id = data.get('roomId')
-    name = (data.get('name') or '').strip()
-    avatar = data.get('avatar') or '🙂'
+    name, name_error = _validate_player_name(data.get('name'))
+    avatar = _clean_avatar(data.get('avatar'))
     
     # Validation du pseudo
-    if not name:
-        socketio.emit('server:error', {'msg': 'Veuillez entrer un pseudo'}, room=request.sid)
-        return
-    if len(name) < 2:
-        socketio.emit('server:error', {'msg': 'Le pseudo doit contenir au moins 2 caractères'}, room=request.sid)
+    if name_error:
+        socketio.emit('server:error', {'msg': name_error}, room=request.sid)
         return
 
     room = rooms.get(room_id)
@@ -889,18 +929,14 @@ def on_room_join(data):
     """
     data = data or {}
     room_id = data.get('roomId') or data.get('RoomId')
-    name = (data.get('name') or '').strip()
-    avatar = data.get('avatar') or '🙂'
+    name, name_error = _validate_player_name(data.get('name'))
+    avatar = _clean_avatar(data.get('avatar'))
     rejoin = bool(data.get('rejoin'))
     
     # Validation du pseudo pour les nouveaux joueurs
-    if not rejoin:
-        if not name:
-            socketio.emit('server:error', {'msg': 'Veuillez entrer un pseudo'}, room=request.sid)
-            return
-        if len(name) < 2:
-            socketio.emit('server:error', {'msg': 'Le pseudo doit contenir au moins 2 caractères'}, room=request.sid)
-            return
+    if name_error:
+        socketio.emit('server:error', {'msg': name_error}, room=request.sid)
+        return
 
     room = rooms.get(room_id)
     if not room:
@@ -1062,9 +1098,9 @@ def on_player_ready(data):
 def on_question_ask(data):
     data = data or {}
     room_id = data.get('RoomId') or data.get('roomId')
-    text = (data.get('text') or '').strip()
+    text, text_error = _validate_question(data.get('text', ''), max_len=200)
     room = rooms.get(room_id)
-    if not room or 'game' not in room or not text:
+    if not room or 'game' not in room or text_error:
         return
     g = room['game']
     
@@ -1090,6 +1126,8 @@ def on_question_answer(data):
     data = data or {}
     room_id = data.get('RoomId') or data.get('roomId')
     answer = data.get('answer')
+    if answer not in ('yes', 'no', 'Oui', 'Non'):
+        return
     room = rooms.get(room_id)
     if not room or 'game' not in room:
         return

@@ -57,11 +57,14 @@ const FinalVoteScreen = {
         otherPlayers.forEach((player, index) => {
             const suspectOption = Utils.createElement('div', 'suspect-option hover-lift');
             suspectOption.style.animationDelay = `${index * 0.1}s`;
+            const safeId = Utils.escapeHTML(player.id);
+            const safeAvatar = Utils.escapeHTML(player.avatar || '🙂');
+            const safeName = Utils.escapeHTML(player.name || 'Joueur');
             
             suspectOption.innerHTML = `
-                <input type="radio" name="suspect" value="${player.id}" class="suspect-radio" id="suspect-${player.id}">
-                <div class="suspect-avatar">${player.avatar || '🙂'}</div>
-                <div class="suspect-name">${player.name || 'Joueur'}</div>
+                <input type="radio" name="suspect" value="${safeId}" class="suspect-radio" id="suspect-${safeId}">
+                <div class="suspect-avatar">${safeAvatar}</div>
+                <div class="suspect-name">${safeName}</div>
             `;
             
             // Add click handler
