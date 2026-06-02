@@ -68,11 +68,11 @@ const VoteContinueScreen = {
     console.log('[VoteContinueScreen] submitVote - ready:', this.ready, 'hasVoted:', this.hasVoted, 'vote:', vote);
     if (!this.ready) {
       console.warn('[VoteContinueScreen] Vote rejected: not ready');
-      Utils.showNotification("Le vote n'est pas encore ouvert…", 'warning');
+      Utils.showNotification(t('continue_vote.not_open'), 'warning');
       return;
     }
     if (this.hasVoted) {
-      Utils.showNotification('Vous avez déjà voté !', 'error');
+      Utils.showNotification(t('continue_vote.already_voted'), 'error');
       Utils.playErrorSound?.();
       return;
     }
@@ -88,7 +88,9 @@ const VoteContinueScreen = {
     this.hasVoted = true;
     this.highlightVote(vote);
     this.disableVoteButtons();
-    Utils.showNotification(`Votre vote : ${vote === 'yes' ? 'Oui' : 'Non'}`, 'success');
+    Utils.showNotification(t('continue_vote.your_vote', {
+      vote: vote === 'yes' ? t('continue_vote.vote_yes') : t('continue_vote.vote_no')
+    }), 'success');
     Utils.playSuccessSound?.();
   },
 

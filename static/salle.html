@@ -4,7 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Salle créée - Intrus Game</title>
+    <meta name="i18n-title" content="create.page_title">
     <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script src="/src/js/i18n.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -439,23 +441,23 @@
 </head>
 <body>
     <div id="roomScreen" class="screen">
-        <h1 class="main-title">Salle créée ! 🎉</h1>
+        <h1 class="main-title" data-i18n="create.title">Salle créée !</h1>
         
         <div class="container">
             <div class="game-card">
-                <h2>ID de la salle</h2>
+                <h2 data-i18n="create.room_id">ID de la salle</h2>
                 <div class="room-id-display">
                     <span class="room-id">ROOM-7B3F</span>
-                    <button class="copy-btn">Copier</button>
+                    <button class="copy-btn" data-i18n="create.copy">Copier</button>
                 </div>
                 
                 <div class="input-group">
-                    <input type="text" class="player-input" placeholder="Votre pseudo">
-                    <button class="primary-btn">Ajouter</button>
+                    <input type="text" class="player-input" placeholder="Votre pseudo" data-i18n-placeholder="create.pseudo_placeholder">
+                    <button class="primary-btn" data-i18n="create.add">Ajouter</button>
                 </div>
                 
                 <div class="players-section">
-                    <h3>Joueurs dans la salle (<span id="playerCount">0</span>/10)</h3>
+                    <h3><span data-i18n="create.players_in_room">Joueurs dans la salle</span> (<span id="playerCount">0</span>/10)</h3>
                         <div class="players-grid" id="playersGrid">
                             <!-- Les joueurs seront ajoutés ici dynamiquement -->
                         </div>
@@ -463,11 +465,16 @@
             </div>
         </div>
         
-        <button class="next-btn disabled" disabled>Démarrer...</button>
+        <button class="next-btn disabled" disabled data-i18n="create.starting">Démarrer...</button>
     </div>
 
     <script>
 document.addEventListener('DOMContentLoaded', () => {
+  if (!window.i18n?.ensureLanguageSelected?.()) {
+    window.location.href = '/';
+    return;
+  }
+
   const socket = io();
 
   // DOM
@@ -503,7 +510,7 @@ document.addEventListener('DOMContentLoaded', () => {
       currentRoomId = roomId;
       roomIdEl.textContent = roomId;
     } catch (e) {
-      alert('Impossible de créer la salle. Réessaie.');
+      alert(t('create.room_create_error'));
     }
   })();
 
@@ -512,7 +519,7 @@ document.addEventListener('DOMContentLoaded', () => {
     await navigator.clipboard.writeText(roomIdEl.textContent);
     const msg = document.createElement('div');
     msg.className = 'copied-message';
-    msg.textContent = 'ID copié dans le presse-papier !';
+    msg.textContent = t('create.id_copied');
     document.body.appendChild(msg);
     setTimeout(() => msg.remove(), 2000);
   });
@@ -524,19 +531,19 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Validation du pseudo
     if (!name) {
-      showNotification('Veuillez entrer un pseudo avant de continuer !', 'warning');
+      showNotification(t('create.enter_pseudo'), 'warning');
       nameInput.focus();
       return;
     }
     
     if (name.length < 2) {
-      showNotification('Le pseudo doit contenir au moins 2 caractères !', 'warning');
+      showNotification(t('create.pseudo_min'), 'warning');
       nameInput.focus();
       return;
     }
 
     if (name.length > 20 || /[<>&"'`]/.test(name)) {
-      showNotification('Le pseudo contient des caractères interdits ou dépasse 20 caractères.', 'warning');
+      showNotification(t('room.name_invalid'), 'warning');
       nameInput.focus();
       return;
     }
@@ -556,7 +563,7 @@ document.addEventListener('DOMContentLoaded', () => {
   socket.on('server:error', (payload) => {
     // Afficher toutes les erreurs serveur comme notifications
     if (payload?.msg) {
-      showNotification(payload.msg, 'error');
+      showNotification(window.i18n?.serverMessage?.(payload.msg) || payload.msg, 'error');
       
       // Si c'est une erreur de pseudo (déjà utilisé ou invalide), réactiver le formulaire
       if (payload.msg.includes('déjà utilisé') || payload.msg.includes('pseudo') || payload.msg.includes('caractères')) {
@@ -616,13 +623,13 @@ document.addEventListener('DOMContentLoaded', () => {
     if (hostAdded && count >= 3 && count <= 10) {
       startBtn.disabled = false;
       startBtn.classList.remove('disabled');
-      startBtn.textContent = 'Démarrer la partie !';
+      startBtn.textContent = t('create.start_game');
     } else {
       startBtn.disabled = true;
       startBtn.classList.add('disabled');
       startBtn.textContent = (count < 3)
-        ? `Encore ${Math.max(0, 3 - count)} joueur${(3 - count) > 1 ? 's' : ''}...`
-        : 'Salle pleine';
+        ? t('create.more_players', { count: Math.max(0, 3 - count) })
+        : t('room.full');
     }
   }
 

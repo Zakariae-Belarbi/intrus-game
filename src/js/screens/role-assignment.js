@@ -48,8 +48,8 @@ const RoleAssignmentScreen = {
     // État d’attente si l’un manque
     if (!me || !currentRole) {
       if (roleIcon)  roleIcon.textContent  = '⏳';
-      if (roleTitle) roleTitle.textContent = 'Préparation en cours...';
-      if (roleContent) roleContent.innerHTML = '<p>Attribution des rôles…</p>';
+      if (roleTitle) roleTitle.textContent = t('role.preparing');
+      if (roleContent) roleContent.innerHTML = `<p>${Utils.escapeHTML(t('role.assigning'))}</p>`;
       if (nextButton)  nextButton.style.display = 'none';
       return; // plus de polling: on attend les events state:players/state:role
     }
@@ -67,7 +67,7 @@ const RoleAssignmentScreen = {
 
     // Afficher le bouton ensuite et le réinitialiser
     if (nextButton) {
-      nextButton.textContent = 'Suivant';
+      nextButton.textContent = t('game.next');
       nextButton.disabled = false;
       nextButton.classList.remove('loading');
       nextButton.style.display = 'block';
@@ -84,19 +84,19 @@ const RoleAssignmentScreen = {
     setTimeout(() => { roleIcon.textContent = '🕵️'; Utils.wiggle(roleIcon); }, 200);
 
     setTimeout(() => {
-      roleTitle.textContent = "Vous êtes L'INTRUS !";
+      roleTitle.textContent = t('role.intruder_title');
       roleTitle.className   = 'intruder-role';
       Utils.fadeIn(roleTitle);
     }, 400);
 
     setTimeout(() => {
       roleContent.innerHTML = `
-        <p>🎯 <strong>Votre mission :</strong></p>
-        <p>Devinez l'animal secret sans vous faire découvrir !</p>
-        <p>Posez des questions subtiles pour découvrir l'animal secret.</p>
-        <p>Évitez d'être suspecté par les autres joueurs.</p>
+        <p><strong>${Utils.escapeHTML(t('role.your_mission'))}</strong></p>
+        <p>${Utils.escapeHTML(t('role.intruder_mission_1'))}</p>
+        <p>${Utils.escapeHTML(t('role.intruder_mission_2'))}</p>
+        <p>${Utils.escapeHTML(t('role.intruder_mission_3'))}</p>
         <div class="animal-reveal" style="background: var(--red-pastel); color: var(--error);">
-          Animal secret : <strong>À DÉCOUVRIR</strong> 🤔
+          <strong>${Utils.escapeHTML(t('role.secret_animal_unknown'))}</strong>
         </div>
       `;
       Utils.slideUp(roleContent);
@@ -122,24 +122,22 @@ const RoleAssignmentScreen = {
         animalDisplay = String(animal);
       }
     }
-    const safeAnimalDisplay = Utils.escapeHTML(animalDisplay);
-
     setTimeout(() => { roleIcon.textContent = '👥'; Utils.bounce(roleIcon); }, 200);
 
     setTimeout(() => {
-      roleTitle.textContent = "Vous N'ÊTES PAS l'intrus !";
+      roleTitle.textContent = t('role.not_intruder_title');
       roleTitle.className   = 'normal-role';
       Utils.fadeIn(roleTitle);
     }, 400);
 
     setTimeout(() => {
       roleContent.innerHTML = `
-        <p>🎯 <strong>Votre mission :</strong></p>
-        <p>Découvrez qui est l'intrus parmi vous !</p>
-        <p>Utilisez l'animal secret pour poser des questions piège.</p>
-        <p>Observez les réactions et réponses des autres.</p>
+        <p><strong>${Utils.escapeHTML(t('role.your_mission'))}</strong></p>
+        <p>${Utils.escapeHTML(t('role.normal_mission_1'))}</p>
+        <p>${Utils.escapeHTML(t('role.normal_mission_2'))}</p>
+        <p>${Utils.escapeHTML(t('role.normal_mission_3'))}</p>
         <div class="animal-reveal">
-          L'animal secret est : <strong>${safeAnimalDisplay}</strong>
+          ${Utils.escapeHTML(t('role.secret_animal_is', { animal: animalDisplay }))}
         </div>
       `;
       Utils.slideUp(roleContent);
@@ -155,7 +153,7 @@ const RoleAssignmentScreen = {
     const roleContent = Utils.getElementById('role-content');
     
     if (btn) { 
-      btn.textContent = 'En attente des autres joueurs...'; 
+      btn.textContent = t('role.waiting_others');
       btn.disabled = true;
       btn.style.opacity = '0.6';
     }
@@ -167,10 +165,10 @@ const RoleAssignmentScreen = {
       waitingDiv.style.cssText = 'margin-top: 2rem; padding: 1.5rem; background: var(--orange-soft); border-radius: 12px; text-align: center;';
       waitingDiv.innerHTML = `
         <p style="font-size: 1.1rem; color: var(--text-primary); margin: 0;">
-          ⏳ En attente des autres joueurs...
+          ${Utils.escapeHTML(t('role.waiting_others'))}
         </p>
         <p id="ready-counter" style="font-size: 0.9rem; color: var(--text-secondary); margin-top: 0.5rem;">
-          Préparation en cours...
+          ${Utils.escapeHTML(t('role.preparing'))}
         </p>
       `;
       roleContent.appendChild(waitingDiv);

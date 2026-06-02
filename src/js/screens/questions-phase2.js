@@ -38,7 +38,7 @@ const QuestionsPhase2Screen = {
         this.waitingForAnswer = false;
         this.clearThread();
         this.disableAllInputs();
-        Utils.showNotification?.('Phase 2 : Questions déléguées', 'info');
+        Utils.showNotification?.(t('phase2.title'), 'info');
     },
 
     onNewTurn({ questionerId, availableTargets, turnIndex, totalTurns } = {}) {
@@ -88,11 +88,11 @@ const QuestionsPhase2Screen = {
         if (this.isMyTurn) {
             this.enableQuestionInput();
             this.populateTargetSelect(availableTargets || []);
-            Utils.showNotification?.('🎤 À vous de poser une question !', 'info');
+            Utils.showNotification?.(t('phase2.your_turn'), 'info');
         } else {
             this.disableAllInputs();
-            const questionerName = questioner?.name || 'Un joueur';
-            Utils.showNotification?.(`${questionerName} pose une question...`, 'info');
+            const questionerName = questioner?.name || t('game.unknown_player');
+            Utils.showNotification?.(t('phase2.someone_asks', { name: questionerName }), 'info');
         }
     },
 
@@ -128,7 +128,7 @@ const QuestionsPhase2Screen = {
         // If I'm the target, enable answer input
         const me = window.gameState?.currentPlayer;
         if (me?.id === targetId) {
-            Utils.showNotification?.('💬 Répondez à la question !', 'success');
+            Utils.showNotification?.(t('phase2.answer_question'), 'success');
             this.enableAnswerInput();
         }
     },
@@ -150,9 +150,9 @@ const QuestionsPhase2Screen = {
         this.waitingForAnswer = false;
         
         // Notification: target becomes new questioner
-        const targetName = target?.name || 'Joueur';
+        const targetName = target?.name || t('game.player');
         setTimeout(() => {
-            Utils.showNotification?.(`${targetName} devient le questionneur`, 'info');
+            Utils.showNotification?.(t('phase2.target_becomes_questioner', { name: targetName }), 'info');
         }, 1000);
     },
 
@@ -165,26 +165,26 @@ const QuestionsPhase2Screen = {
         console.log('[Phase2] askDelegatedQuestion', { question, targetId });
         
         if (!question || question.length < 2) {
-            Utils.showNotification?.('Veuillez saisir une question (minimum 2 caractères)', 'error');
+            Utils.showNotification?.(t('phase2.enter_question_min'), 'error');
             Utils.playErrorSound?.();
             Utils.wiggle?.(questionInput);
             return;
         }
 
         if (question.length > 200) {
-            Utils.showNotification?.('Question trop longue (200 caractères max)', 'error');
+            Utils.showNotification?.(t('phase1.question_too_long_200'), 'error');
             Utils.playErrorSound?.();
             return;
         }
 
         if (Utils.hasHTMLChars?.(question)) {
-            Utils.showNotification?.('La question contient des caractères interdits', 'error');
+            Utils.showNotification?.(t('phase1.question_invalid'), 'error');
             Utils.playErrorSound?.();
             return;
         }
 
         if (!targetId) {
-            Utils.showNotification?.('Veuillez sélectionner une cible', 'error');
+            Utils.showNotification?.(t('phase2.select_target'), 'error');
             Utils.playErrorSound?.();
             Utils.wiggle?.(targetSelect);
             return;
@@ -206,7 +206,7 @@ const QuestionsPhase2Screen = {
         console.log('[Phase2] answerDelegatedQuestion', { answer });
         
         if (!answer || !['Oui', 'Non'].includes(answer)) {
-            Utils.showNotification?.('Réponse invalide', 'error');
+            Utils.showNotification?.(t('phase1.question_invalid'), 'error');
             Utils.playErrorSound?.();
             return;
         }
@@ -218,7 +218,7 @@ const QuestionsPhase2Screen = {
         // Disable buttons
         this.disableAnswerInput();
         
-        Utils.showNotification?.('Réponse envoyée !', 'success');
+        Utils.showNotification?.(t('phase1.question_sent'), 'success');
         Utils.playSuccessSound?.();
     },
     
@@ -232,7 +232,7 @@ const QuestionsPhase2Screen = {
         console.log('[Phase2] populateTargetSelect', { availableTargets });
         
         // Clear options
-        targetSelect.innerHTML = '<option value="">Sélectionner une cible</option>';
+        targetSelect.innerHTML = `<option value="">${this.escape(t('phase2.select_player'))}</option>`;
         
         // Use available targets from server if provided
         if (availableTargets.length > 0) {
@@ -295,7 +295,7 @@ const QuestionsPhase2Screen = {
         
         if (input) {
             input.disabled = false;
-            input.placeholder = 'Posez votre question...';
+            input.placeholder = t('phase1.question_placeholder');
         }
         if (select) select.disabled = false;
         
@@ -310,7 +310,7 @@ const QuestionsPhase2Screen = {
         
         if (input) {
             input.disabled = true;
-            input.placeholder = 'En attente...';
+            input.placeholder = t('phase1.waiting_placeholder');
         }
         if (btn) {
             btn.disabled = true;
@@ -337,14 +337,14 @@ const QuestionsPhase2Screen = {
             answerContainer.style.cssText = 'margin-top: 1rem; padding: 1rem; background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%); border-radius: 12px; border-left: 4px solid var(--success); animation: slideInUp 0.3s ease;';
             answerContainer.innerHTML = `
                 <label style="display: block; margin-bottom: 0.75rem; font-weight: 600; color: var(--success); text-align: center;">
-                    💬 Votre réponse :
+                    ${this.escape(t('phase2.your_answer'))}
                 </label>
                 <div style="display: flex; gap: 1rem; justify-content: center;">
                     <button class="primary-btn" id="phase2-answer-yes" style="background: var(--success); min-width: 120px; font-size: 1.1rem;">
-                        ✓ Oui
+                        ✓ ${this.escape(t('phase1.yes'))}
                     </button>
                     <button class="primary-btn" id="phase2-answer-no" style="background: var(--danger); min-width: 120px; font-size: 1.1rem;">
-                        ✗ Non
+                        ✗ ${this.escape(t('phase1.no'))}
                     </button>
                 </div>
             `;
@@ -430,15 +430,16 @@ const QuestionsPhase2Screen = {
     displayAnswer(target, answer) {
         const thread = Utils.getElementById('delegated-thread');
         if (!thread) return;
-        const safeTarget = this.escape(target?.name || 'Joueur');
-        const safeAnswer = answer === 'Oui' ? 'Oui' : 'Non';
+        const targetName = target?.name || t('game.player');
+        const safeAnsweredLabel = this.escape(t('phase2.answered', { name: targetName }));
+        const safeAnswer = this.escape(answer === 'Oui' ? t('phase1.yes') : t('phase1.no'));
         
         const answerBubble = document.createElement('div');
         answerBubble.className = 'answer-bubble';
         answerBubble.style.cssText = 'margin-bottom: 1.5rem; padding: 1rem; background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%); border-radius: 12px; border-left: 4px solid var(--success); animation: slideInRight 0.4s ease; margin-left: 2rem;';
         answerBubble.innerHTML = `
             <div style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.5rem;">
-                <strong>${safeTarget}</strong> répond :
+                <strong>${safeAnsweredLabel}</strong>
             </div>
             <div style="font-size: 1.1rem; font-weight: 600; color: var(--success);">${safeAnswer}</div>
         `;
@@ -452,7 +453,7 @@ const QuestionsPhase2Screen = {
             const warningMsg = document.createElement('div');
             warningMsg.className = 'clearing-warning';
             warningMsg.style.cssText = 'text-align: center; padding: 0.75rem; margin-top: 1rem; background: var(--orange-soft); border-radius: 8px; color: var(--text-secondary); font-size: 0.9rem; animation: pulse 1s ease-in-out infinite;';
-            warningMsg.innerHTML = '⏳ Tour suivant dans 3 secondes...';
+            warningMsg.innerHTML = this.escape(t('phase1.next_turn'));
             thread.appendChild(warningMsg);
             thread.scrollTop = thread.scrollHeight;
         }, 100);

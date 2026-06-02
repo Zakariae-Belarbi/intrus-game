@@ -26,7 +26,7 @@ const IntruderGuessScreen = {
         this.renderAnimals();
         this.updateSubmitButton();
         
-        Utils.showNotification?.('🕵️ Trouvez le bon animal pour gagner !', 'info');
+        Utils.showNotification?.(t('intruder_guess.find_animal'), 'info');
     },
 
     renderAnimals() {
@@ -91,7 +91,7 @@ const IntruderGuessScreen = {
 
     selectAnimal(animal, optionElement) {
         if (this.hasSubmitted) {
-            Utils.showNotification?.('Vous avez déjà validé votre choix !', 'error');
+            Utils.showNotification?.(t('intruder_guess.already_submitted'), 'error');
             Utils.playErrorSound?.();
             return;
         }
@@ -115,7 +115,7 @@ const IntruderGuessScreen = {
         Utils.playClickSound?.();
         
         const displayName = animal.name ? `${animal.name} ${animal.emoji}` : animal;
-        Utils.showNotification?.(`${displayName} sélectionné`, 'info');
+        Utils.showNotification?.(t('intruder_guess.selected', { animal: displayName }), 'info');
     },
 
     updateSubmitButton() {
@@ -138,13 +138,13 @@ const IntruderGuessScreen = {
 
     submitGuess() {
         if (!this.selectedAnimal) {
-            Utils.showNotification?.('Veuillez sélectionner un animal', 'error');
+            Utils.showNotification?.(t('intruder_guess.select_animal'), 'error');
             Utils.playErrorSound?.();
             return;
         }
 
         if (this.hasSubmitted) {
-            Utils.showNotification?.('Vous avez déjà validé !', 'error');
+            Utils.showNotification?.(t('intruder_guess.already_validated'), 'error');
             Utils.playErrorSound?.();
             return;
         }
@@ -160,7 +160,7 @@ const IntruderGuessScreen = {
         const displayName = this.selectedAnimal.name ? 
             `${this.selectedAnimal.name} ${this.selectedAnimal.emoji}` : 
             this.selectedAnimal;
-        Utils.showNotification?.(`Réponse confirmée : ${displayName}`, 'success');
+        Utils.showNotification?.(t('intruder_guess.confirmed', { animal: displayName }), 'success');
         Utils.playSuccessSound?.();
     },
 

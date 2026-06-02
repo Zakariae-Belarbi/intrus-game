@@ -126,7 +126,7 @@ class IntrusGameApp {
                         <li>Les joueurs normaux doivent découvrir l'intrus</li>
                     </ul>
                     
-                    <h4>🎯 Déroulement :</h4>
+                    <h4>Déroulement :</h4>
                     <ol>
                         <li>Phase de questions en paires</li>
                         <li>Vote pour continuer ou passer au vote final</li>

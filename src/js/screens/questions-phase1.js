@@ -85,7 +85,7 @@
 
       // réinitialiser la zone de réponse + thread
       const ansBox = $id('answer-section');
-      if (ansBox) ansBox.innerHTML = `<div class="waiting-message">En attente de question...</div>`;
+      if (ansBox) ansBox.innerHTML = `<div class="waiting-message">${Utils.escapeHTML(t('phase1.waiting_question'))}</div>`;
       const thread = $id('questions-thread');
       if (thread) {
         // ✅ NETTOYER l'historique des questions/réponses pour chaque nouveau tour
@@ -131,12 +131,12 @@
         if (ansBox) {
           ansBox.innerHTML = `
             <div class="answer-prompt">
-              <h4>Répondez :</h4>
+              <h4>${Utils.escapeHTML(t('phase1.answer'))}</h4>
               <p class="question-repeat">"${safeText}"</p>
             </div>
             <div class="answer-buttons">
-              <button class="answer-btn yes" id="ans-yes">✓ Oui</button>
-              <button class="answer-btn no"  id="ans-no">✗ Non</button>
+              <button class="answer-btn yes" id="ans-yes">✓ ${Utils.escapeHTML(t('phase1.yes'))}</button>
+              <button class="answer-btn no"  id="ans-no">✗ ${Utils.escapeHTML(t('phase1.no'))}</button>
             </div>
           `;
           Utils?.slideUp?.(ansBox);
@@ -149,7 +149,7 @@
         // Sinon, indiquer visuellement qu'on attend la réponse de la cible
         const ansBox = $id('answer-section');
         if (ansBox) {
-          ansBox.innerHTML = `<div class="waiting-message">En attente de la réponse de <b>${safeTarget}</b>…</div>`;
+          ansBox.innerHTML = `<div class="waiting-message">${Utils.escapeHTML(t('phase1.waiting_answer', { name: this._nameOf(target) }))}</div>`;
         }
       }
 
@@ -166,7 +166,7 @@
     onAnswered({ answer, asker, target }) {
       const ansBox = $id('answer-section');
       if (ansBox) {
-        ansBox.innerHTML = `<div class="result">Réponse: <b>${/yes|oui/i.test(answer) ? 'Oui' : 'Non'}</b></div>`;
+        ansBox.innerHTML = `<div class="result">${Utils.escapeHTML(t('phase1.response'))} <b>${/yes|oui/i.test(answer) ? Utils.escapeHTML(t('phase1.yes')) : Utils.escapeHTML(t('phase1.no'))}</b></div>`;
       }
 
       const thread = $id('questions-thread');
@@ -174,7 +174,7 @@
         const bubble = makeEl('div', 'answer-bubble slide-in-right');
         bubble.innerHTML = `
           <div class="bubble-author">${this._safeNameOf(target)}</div>
-          <div class="bubble-content"><strong>${/yes|oui/i.test(answer) ? 'Oui' : 'Non'}</strong></div>
+          <div class="bubble-content"><strong>${/yes|oui/i.test(answer) ? Utils.escapeHTML(t('phase1.yes')) : Utils.escapeHTML(t('phase1.no'))}</strong></div>
         `;
         thread.appendChild(bubble);
         thread.scrollTop = thread.scrollHeight;
@@ -184,7 +184,7 @@
         setTimeout(() => {
           const warningMsg = makeEl('div', 'clearing-warning');
           warningMsg.style.cssText = 'text-align: center; padding: 0.75rem; margin-top: 1rem; background: var(--orange-soft); border-radius: 8px; color: var(--text-secondary); font-size: 0.9rem; animation: pulse 1s ease-in-out infinite;';
-          warningMsg.innerHTML = '⏳ Tour suivant dans 3 secondes...';
+          warningMsg.innerHTML = Utils.escapeHTML(t('phase1.next_turn'));
           thread.appendChild(warningMsg);
           thread.scrollTop = thread.scrollHeight;
         }, 100);
@@ -202,7 +202,7 @@
       const text   = (qInput?.value || '').trim();
 
       if (!text) {
-        Utils?.showNotification?.('Veuillez saisir une question', 'error');
+        Utils?.showNotification?.(t('phase1.enter_question'), 'error');
         Utils?.playErrorSound?.();
         Utils?.wiggle?.(qInput);
         return;
@@ -211,18 +211,18 @@
       // sécurité : seul le questionneur peut envoyer
       if (window.socket?.id !== this.turn.asker) {
         console.warn('[PHASE1] tentative d’envoi alors que je ne suis pas le questionneur');
-        Utils?.showNotification?.("Ce n'est pas votre tour de poser 😉", 'error');
+        Utils?.showNotification?.(t('phase1.not_your_turn'), 'error');
         return;
       }
 
       if (text.length > 200) {
-        Utils?.showNotification?.('Question trop longue (200 caractères max)', 'error');
+        Utils?.showNotification?.(t('phase1.question_too_long_200'), 'error');
         Utils?.playErrorSound?.();
         return;
       }
 
       if (Utils?.hasHTMLChars?.(text)) {
-        Utils?.showNotification?.('La question contient des caractères interdits', 'error');
+        Utils?.showNotification?.(t('phase1.question_invalid'), 'error');
         Utils?.playErrorSound?.();
         return;
       }
@@ -234,7 +234,7 @@
       if (qInput) qInput.value = '';
       if (send)   send.disabled = true;
 
-      Utils?.showNotification?.('Question envoyée !', 'success');
+      Utils?.showNotification?.(t('phase1.question_sent'), 'success');
       Utils?.playSuccessSound?.();
     },
 
@@ -256,7 +256,7 @@
       const total = Number(this.turn.total) || 0;
       const askerName  = this._nameOf(this.turn.asker);
       const targetName = this._nameOf(this.turn.target);
-      if (banner) banner.textContent = `Tour ${idx} / ${total} : ${askerName} → ${targetName}`;
+      if (banner) banner.textContent = t('phase1.current_turn', { index: idx, total, asker: askerName, target: targetName });
     },
 
     updateProgressBar() {
@@ -274,7 +274,7 @@
 
       if (qInput) {
         qInput.disabled = !meIsAsker;
-        qInput.placeholder = meIsAsker ? 'Pose ta question...' : 'En attente...';
+        qInput.placeholder = meIsAsker ? t('phase1.question_placeholder') : t('phase1.waiting_placeholder');
         if (clearInput) qInput.value = '';
       }
       if (send) send.disabled = !meIsAsker;
@@ -307,7 +307,7 @@
       send   && (send.disabled = true);
 
       const banner = $id('current-turn');
-      banner && (banner.textContent = 'Tour : —');
+      banner && (banner.textContent = t('phase1.default_turn'));
 
       const bar = $id('phase1-progress');
       bar && (bar.style.width = '0%');
@@ -316,12 +316,12 @@
       thread && (thread.innerHTML = '');
 
       const ans = $id('answer-section');
-      ans && (ans.innerHTML = '<div class="waiting-message">En attente de question...</div>');
+      ans && (ans.innerHTML = `<div class="waiting-message">${Utils.escapeHTML(t('phase1.waiting_question'))}</div>`);
     },
 
     // Compat / fallback (si quelqu’un clique quand même)
     proceedToVote() {
-      Utils?.showNotification?.('Vote en cours...', 'info');
+      Utils?.showNotification?.(t('phase1.vote_in_progress'), 'info');
       Utils?.playClickSound?.();
       setTimeout(() => {
         if (window.intrusGame?.navigateTo) intrusGame.navigateTo('vote-continue-screen');

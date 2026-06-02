@@ -32,7 +32,7 @@ const ResultsScreen = {
         
         if (playAgainBtn) {
             playAgainBtn.disabled = false;
-            playAgainBtn.textContent = 'Continuer à jouer';
+            playAgainBtn.textContent = t('results.continue_playing');
             playAgainBtn.style.opacity = '1';
         }
         
@@ -76,7 +76,7 @@ const ResultsScreen = {
         
         setTimeout(() => {
             // Set intruder name
-            revealedIntruder.textContent = intruder?.name || 'Inconnu';
+            revealedIntruder.textContent = intruder?.name || t('results.unknown');
             
             // Add flip animation
             intruderReveal.style.transition = 'all 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55)';
@@ -88,21 +88,20 @@ const ResultsScreen = {
                 const intruderInfo = intruderReveal.querySelector('.intruder-info');
                 const animalResult = document.createElement('div');
                 animalResult.style.cssText = 'margin-top: 1rem; padding: 1rem; background: rgba(255,255,255,0.9); border-radius: 12px;';
-                const safeCorrectAnimal = Utils.escapeHTML(correctAnimal);
-                
+
                 if (intruderGuessedCorrectly) {
                     animalResult.innerHTML = `
                         <p style="font-size: 0.9rem; color: var(--success); font-weight: 600;">
-                            ✅ L'intrus a trouvé l'animal : ${safeCorrectAnimal}
+                            ${Utils.escapeHTML(t('results.intruder_found_animal', { animal: correctAnimal }))}
                         </p>
                     `;
                 } else {
                     animalResult.innerHTML = `
                         <p style="font-size: 0.9rem; color: var(--error); font-weight: 600;">
-                            ❌ L'intrus n'a pas trouvé l'animal
+                            ${Utils.escapeHTML(t('results.intruder_not_found_animal'))}
                         </p>
                         <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.5rem;">
-                            L'animal était : ${safeCorrectAnimal}
+                            ${Utils.escapeHTML(t('results.animal_was', { animal: correctAnimal }))}
                         </p>
                     `;
                 }
@@ -138,7 +137,7 @@ const ResultsScreen = {
         }
         
         // Create floating emojis
-        const emojis = ['🎉', '✨', '🎊', '🎈'];
+        const emojis = ['🎉', '◆', '🎊', '🎈'];
         for (let i = 0; i < 8; i++) {
             setTimeout(() => {
                 this.createFloatingEmoji(Utils.getRandomElement(emojis));
@@ -193,7 +192,7 @@ const ResultsScreen = {
             headerDiv.style.cssText = 'text-align: center; margin-bottom: 1.5rem; padding: 1rem; background: rgba(255,255,255,0.5); border-radius: 12px;';
             headerDiv.innerHTML = `
                 <h3 style="margin: 0; font-size: 1.1rem; color: var(--text-primary);">
-                    ${gamesPlayed === 1 ? 'Première partie' : `Partie ${gamesPlayed}`}
+                    ${Utils.escapeHTML(gamesPlayed === 1 ? t('results.first_game') : t('results.game_number', { number: gamesPlayed }))}
                 </h3>
             `;
             scoresTable.appendChild(headerDiv);
@@ -230,35 +229,35 @@ const ResultsScreen = {
             const isIntruder = this.resultsData?.intruder?.id === player.id;
             if (isIntruder) {
                 cardClass = 'intruder-card';
-                badge = score > 0 ? '👑 Intrus victorieux' : '😵 Intrus découvert';
+                badge = score > 0 ? t('results.intruder_victorious') : t('results.intruder_discovered');
             } else if (score >= 2) {
                 cardClass = 'winner-card';
-                badge = '🏆 Vainqueur';
+                badge = t('results.winner');
             }
             
             scoreCard.className += ` ${cardClass}`;
             
             // Construire le HTML avec scores cumulés si disponibles
-            let scoreHTML = `<div class="score-points">${score} pts</div>`;
+            let scoreHTML = `<div class="score-points">${Utils.escapeHTML(t('results.points', { points: score }))}</div>`;
             if (cumulScore !== null && gamesPlayed > 1) {
                 scoreHTML = `
                     <div class="score-breakdown">
                         <div class="score-round" style="font-size: 0.9rem; color: var(--text-secondary);">
-                            +${score} pts cette partie
+                            ${Utils.escapeHTML(t('results.points_this_game', { points: score }))}
                         </div>
                         <div class="score-total" style="font-size: 1.2rem; font-weight: 700; color: var(--text-primary); margin-top: 0.25rem;">
-                            ${cumulScore} pts au total
+                            ${Utils.escapeHTML(t('results.points_total', { points: cumulScore }))}
                         </div>
                     </div>
                 `;
             } else if (cumulScore !== null) {
-                scoreHTML = `<div class="score-points">${cumulScore} pts</div>`;
+                scoreHTML = `<div class="score-points">${Utils.escapeHTML(t('results.points', { points: cumulScore }))}</div>`;
             }
             
             scoreCard.innerHTML = `
                 <div class="score-avatar">${safeAvatar}</div>
                 <div class="score-name">${safeName}</div>
-                ${badge ? `<div class="score-badge">${badge}</div>` : ''}
+                ${badge ? `<div class="score-badge">${Utils.escapeHTML(badge)}</div>` : ''}
                 ${scoreHTML}
             `;
             
@@ -424,7 +423,7 @@ const ResultsScreen = {
         
         const roomId = window.gameState?.roomId;
         if (!roomId) {
-            Utils.showNotification('Impossible de rejouer', 'error');
+            Utils.showNotification(t('results.cannot_replay'), 'error');
             return;
         }
         
@@ -435,18 +434,18 @@ const ResultsScreen = {
         const playAgainBtn = Utils.getElementById('play-again-btn');
         if (playAgainBtn) {
             playAgainBtn.disabled = true;
-            playAgainBtn.textContent = 'En attente...';
+            playAgainBtn.textContent = t('results.waiting');
             playAgainBtn.style.opacity = '0.6';
         }
         
         // Remonter automatiquement en haut de la page pour voir le rôle
         window.scrollTo({ top: 0, behavior: 'smooth' });
         
-        Utils.showNotification('Vote enregistré. En attente des autres joueurs...', 'info');
+        Utils.showNotification(t('results.vote_saved_waiting'), 'info');
     },
 
     backToLobby() {
-        Utils.showNotification('Retour au lobby...', 'info');
+        Utils.showNotification(t('results.back_lobby'), 'info');
         Utils.playClickSound();
         
         // Nettoyer le contexte
@@ -465,7 +464,7 @@ const ResultsScreen = {
         playAgainBtn.disabled = true;
         playAgainBtn.style.opacity = '0.5';
         playAgainBtn.style.cursor = 'not-allowed';
-        playAgainBtn.textContent = '❌ Impossible de continuer';
+        playAgainBtn.textContent = t('results.cannot_continue');
         
         // Afficher le message d'erreur sous le bouton
         const btnContainer = playAgainBtn.parentElement;

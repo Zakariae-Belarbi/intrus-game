@@ -50,7 +50,7 @@ const FinalVoteScreen = {
         const otherPlayers = players.filter(p => p.id !== currentPlayer?.id);
         
         if (otherPlayers.length === 0) {
-            suspectsList.innerHTML = '<p style="text-align: center; color: var(--text-secondary);">Aucun suspect disponible</p>';
+            suspectsList.innerHTML = `<p style="text-align: center; color: var(--text-secondary);">${Utils.escapeHTML(t('final_vote.no_suspect'))}</p>`;
             return;
         }
         
@@ -83,7 +83,7 @@ const FinalVoteScreen = {
 
     selectSuspect(playerId, optionElement) {
         if (this.hasVoted) {
-            Utils.showNotification('Vous avez déjà voté !', 'error');
+            Utils.showNotification(t('final_vote.already_voted'), 'error');
             Utils.playErrorSound();
             return;
         }
@@ -107,7 +107,7 @@ const FinalVoteScreen = {
         
         const player = window.gameState?.getPlayerById(playerId);
         if (player) {
-            Utils.showNotification(`${player.name} sélectionné`, 'info');
+            Utils.showNotification(t('final_vote.selected', { name: player.name }), 'info');
         }
     },
 
@@ -130,13 +130,13 @@ const FinalVoteScreen = {
 
     submitVote() {
         if (!this.selectedSuspect) {
-            Utils.showNotification('Veuillez sélectionner un suspect', 'error');
+            Utils.showNotification(t('final_vote.select_suspect'), 'error');
             Utils.playErrorSound();
             return;
         }
 
         if (this.hasVoted) {
-            Utils.showNotification('Vous avez déjà voté !', 'error');
+            Utils.showNotification(t('final_vote.already_voted'), 'error');
             Utils.playErrorSound();
             return;
         }
@@ -150,7 +150,7 @@ const FinalVoteScreen = {
         this.disableVoting();
         
         const suspectedPlayer = window.gameState?.getPlayerById(this.selectedSuspect);
-        Utils.showNotification(`Vote confirmé : ${suspectedPlayer?.name || 'Joueur'}`, 'success');
+        Utils.showNotification(t('final_vote.confirmed', { name: suspectedPlayer?.name || t('game.player') }), 'success');
         Utils.playSuccessSound();
     },
 
@@ -172,7 +172,7 @@ const FinalVoteScreen = {
 
     updateVoteCount(count, total) {
         // Afficher la progression (optionnel)
-        Utils.showNotification(`${count}/${total} votes reçus`, 'info');
+        Utils.showNotification(t('final_vote.votes_received', { count, total }), 'info');
     },
 
     show() {

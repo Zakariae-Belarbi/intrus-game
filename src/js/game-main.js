@@ -45,10 +45,12 @@ class IntrusGameApp {
     `;
     help.innerHTML = `
       <div class="help-modal" style="background:#fff;padding:2rem;border-radius:16px;max-width:520px">
-        <h3>🎮 Intrus Game</h3>
-        <p>Phase 1: questions en paires → Vote → Phase 2 → Vote final → Résultats.</p>
+        <h3>${Utils.escapeHTML(t('help.title'))}</h3>
+        <p>${Utils.escapeHTML(t('help.rule1'))}</p>
+        <p>${Utils.escapeHTML(t('help.rule2'))}</p>
+        <p>${Utils.escapeHTML(t('help.rule3'))}</p>
         <div style="text-align:right;margin-top:1rem">
-          <button class="primary-btn" onclick="this.closest('.modal-overlay').remove()">OK</button>
+          <button class="primary-btn" onclick="this.closest('.modal-overlay').remove()">${Utils.escapeHTML(t('help.close'))}</button>
         </div>
       </div>
     `;

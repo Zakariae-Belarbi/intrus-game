@@ -1,4 +1,4 @@
-// src/js/realtime.js
+﻿// src/js/realtime.js
 (() => {
   'use strict';
 
@@ -10,11 +10,35 @@
   function renderBannerFromTurn(turn) {
     if (!turn) return;
     const q = window.gameState?.getPlayerById?.(turn.questionerId);
-    const t = window.gameState?.getPlayerById?.(turn.targetId);
+    const targetPlayer = window.gameState?.getPlayerById?.(turn.targetId);
     const banner = document.getElementById('phase1-current-turn'); // ⚠️ ID unique
-    if (banner && q && t) {
-      banner.textContent = `Tour ${turn.index + 1}/${turn.total} : ${q.name} → ${t.name}`;
+    if (banner && q && targetPlayer) {
+      banner.textContent = t('phase1.current_turn', {
+        index: turn.index + 1,
+        total: turn.total,
+        asker: q.name,
+        target: targetPlayer.name
+      });
     }
+  }
+
+  function serverMessage(message) {
+    const map = {
+      'Veuillez entrer un pseudo': 'room.name_required',
+      'Le pseudo doit contenir au moins 2 caractères': 'room.name_too_short',
+      'Le pseudo contient des caractères interdits': 'room.name_invalid',
+      'Salle introuvable': 'room.not_found',
+      'Salle pleine': 'room.full',
+      'La partie a déjà commencé': 'room.game_started',
+      'Impossible de rejoindre, partie déjà démarrée': 'join.game_already_started',
+      'Impossible de recoller: joueur inconnu': 'game.reconnect_error',
+      "Seul l'hôte peut démarrer.": 'room.only_host',
+      'Au moins 3 joueurs requis (min 3).': 'room.min_players_required',
+      'Attendez que tous les joueurs soient prêts': 'room.wait_all_ready'
+    };
+    const duplicateMatch = String(message || '').match(/^Le pseudo "(.+)" est déjà utilisé/);
+    if (duplicateMatch) return t('room.name_taken_full', { name: duplicateMatch[1] });
+    return map[message] ? t(map[message]) : message;
   }
 
   // -------- contexte session
@@ -97,13 +121,13 @@
       // Mettre à jour le compteur sur l'écran de rôle
       const readyCounter = document.getElementById('ready-counter');
       if (readyCounter) {
-        readyCounter.textContent = `${ready}/${total} joueurs prêts`;
+        readyCounter.textContent = t('role.ready_counter', { ready, total });
         readyCounter.style.color = ready === total ? 'var(--success)' : 'var(--text-secondary)';
       }
       
       // Notification
       if (ready < total) {
-        window.Utils?.showNotification?.(`${ready}/${total} joueurs prêts`, 'info');
+        window.Utils?.showNotification?.(t('role.ready_counter', { ready, total }), 'info');
       }
     } catch (e) {
       console.error('[realtime] ready:update error', e);
@@ -114,7 +138,7 @@
   socket.on('phase:start', () => {
     try {
       L('phase:start');
-      window.Utils?.showNotification?.('Tous les joueurs sont prêts ! La partie commence !', 'success');
+      window.Utils?.showNotification?.(t('role.all_ready'), 'success');
       
       // Déclencher l'événement pour que RoleAssignmentScreen puisse réagir
       document.dispatchEvent(new CustomEvent('phase:start'));
@@ -278,7 +302,7 @@
 
   socket.on('phase2:end', () => {
     L('phase2:end');
-    window.Utils?.showNotification?.('Phase 2 terminée !', 'success');
+    window.Utils?.showNotification?.(t('phase2.finished'), 'success');
   });
 
 
@@ -297,7 +321,7 @@
   socket.on('server:error', (payload) => {
     console.error('[server:error]', payload);
     if (window.Utils?.showNotification && payload?.msg) {
-      window.Utils.showNotification(payload.msg, 'error');
+      window.Utils.showNotification(serverMessage(payload.msg), 'error');
       
       // Si c'est une erreur de pseudo déjà utilisé, permettre de réessayer
       if (payload.msg.includes('déjà utilisé') || payload.msg.includes('pseudo')) {
@@ -340,7 +364,7 @@
 
   socket.on('final_vote:end', () => {
     L('final_vote:end');
-    window.Utils?.showNotification?.('Tous les votes sont comptés !', 'success');
+    window.Utils?.showNotification?.(t('final_vote.all_counted'), 'success');
   });
 
   // -------- Gestion de la déconnexion d'un joueur
@@ -348,12 +372,12 @@
     L('player:left', { playerName, remainingPlayers, canContinue });
     
     // Notification pour informer qu'un joueur a quitté
-    const message = `${playerName} a quitté la partie. Joueurs restants : ${remainingPlayers}`;
+    const message = t('game.player_left_name', { name: playerName, count: remainingPlayers });
     window.Utils?.showNotification?.(message, canContinue ? 'info' : 'error');
     
     // Si moins de 3 joueurs, bloquer le bouton "Continuer à jouer"
     if (!canContinue) {
-      window.ResultsScreen?.disableContinueButton?.(`${playerName} a quitté la partie donc impossible de démarrer une autre vous êtes <3`);
+      window.ResultsScreen?.disableContinueButton?.(t('game.cannot_continue_players', { name: playerName }));
     }
   });
 
@@ -391,17 +415,17 @@
     // Mettre à jour le compteur dans l'écran des résultats
     const counterDiv = document.getElementById('play-again-counter');
     if (counterDiv) {
-      counterDiv.textContent = `${count}/${total} joueurs prêts`;
+      counterDiv.textContent = t('role.ready_counter', { ready: count, total });
       counterDiv.style.display = 'block';
     }
     
-    window.Utils?.showNotification?.(`${count}/${total} joueurs prêts à continuer`, 'info');
+    window.Utils?.showNotification?.(t('role.ready_counter', { ready: count, total }), 'info');
   });
 
   socket.on('play:again:confirmed', () => {
     L('play:again:confirmed');
     
-    window.Utils?.showNotification?.('Nouvelle partie dans 2 secondes...', 'success');
+    window.Utils?.showNotification?.(t('results.new_game_soon'), 'success');
     
     // Préparer l'interface pour la nouvelle partie
     setTimeout(() => {
@@ -413,7 +437,7 @@
       // Masquer l'écran actuel et afficher un écran de transition
       const playAgainBtn = document.getElementById('play-again-btn');
       if (playAgainBtn) {
-        playAgainBtn.textContent = 'Chargement...';
+        playAgainBtn.textContent = t('game.loading');
         playAgainBtn.disabled = true;
       }
       
@@ -437,7 +461,7 @@
         console.log('[ack] vote:continue:cast', ack);
         if (!ack || ack.ok !== true) {
           const why = ack?.reason || 'inconnu';
-          window.Utils?.showNotification?.(`Vote non pris en compte (${why})`, 'error');
+          window.Utils?.showNotification?.(t('continue_vote.vote_not_counted', { why }), 'error');
         }
       });
     },
@@ -448,7 +472,7 @@
         
         if (ack && ack.ok) {
           // Succès : afficher la notification de succès et vider l'input
-          window.Utils?.showNotification?.('Question envoyée !', 'success');
+          window.Utils?.showNotification?.(t('phase1.question_sent'), 'success');
           window.Utils?.playSuccessSound?.();
           
           // Vider l'input seulement en cas de succès
@@ -458,21 +482,21 @@
           }
         } else if (ack && !ack.ok) {
           // Erreur : afficher le message d'erreur spécifique
-          let errorMsg = 'Question non envoyée';
+          let errorMsg = t('phase1.question_not_sent');
           if (ack.reason === 'invalid_question') {
-            errorMsg = 'Question invalide (minimum 2 caractères)';
+            errorMsg = t('phase1.question_invalid_min');
           } else if (ack.reason === 'question_too_long') {
-            errorMsg = 'Question trop longue (200 caractères max)';
+            errorMsg = t('phase1.question_too_long_200');
           } else if (ack.reason === 'question_forbidden_chars') {
-            errorMsg = 'La question contient des caractères interdits';
+            errorMsg = t('phase1.question_invalid');
           } else if (ack.reason === 'not_your_turn') {
-            errorMsg = "Ce n'est pas votre tour";
+            errorMsg = t('phase1.not_your_turn');
           } else if (ack.reason === 'invalid_target') {
-            errorMsg = 'Cible invalide';
+            errorMsg = t('phase2.select_target');
           } else if (ack.reason === 'cannot_ask_yourself') {
-            errorMsg = 'Vous ne pouvez pas vous poser une question';
+            errorMsg = t('phase1.cannot_ask_self');
           } else if (ack.reason === 'cannot_target_previous_questioner') {
-            errorMsg = 'Vous ne pouvez pas cibler le questionneur précédent';
+            errorMsg = t('phase1.cannot_target_previous');
           }
           window.Utils?.showNotification?.(errorMsg, 'error');
           window.Utils?.playErrorSound?.();
@@ -489,7 +513,7 @@
       socket.emit('phase2:answer', { roomId: ctx.roomId, answer }, (ack) => {
         console.log('[ack] phase2:answer', ack);
         if (!ack || !ack.ok) {
-          window.Utils?.showNotification?.('Réponse non envoyée', 'error');
+          window.Utils?.showNotification?.(t('phase1.question_not_sent'), 'error');
         }
       });
     },
@@ -500,16 +524,13 @@
       socket.emit('intruder:submit_guess', { roomId: ctx.roomId, animal }, (ack) => {
         console.log('[ack] intruder:submit_guess', ack);
         if (!ack || !ack.ok) {
-          window.Utils?.showNotification?.('Réponse non envoyée', 'error');
+          window.Utils?.showNotification?.(t('phase1.question_not_sent'), 'error');
         } else {
-          window.Utils?.showNotification?.('Réponse envoyée !', 'success');
+          window.Utils?.showNotification?.(t('phase1.question_sent'), 'success');
         }
       });
     }
   };
-
-// Fallback sûr à la fin des tours
-
 
   // alias compat
   window.NET = window.NET || window.realtime;

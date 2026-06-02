@@ -1,10 +1,12 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Intrus Game - Rejoindre une salle</title>
+    <meta name="i18n-title" content="join.page_title">
     <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script src="/src/js/i18n.js"></script>
     <style>
         :root {
             /* Variables CSS */
@@ -471,30 +473,30 @@
     <!-- Écran "Rejoindre une salle" -->
     <div id="joinScreen" class="screen active">
         <div class="container">
-            <h1 class="main-title">Rejoindre une salle</h1>
+            <h1 class="main-title" data-i18n="join.title">Rejoindre une salle</h1>
             
             <div class="game-card">
-                <h2>Entrez l'ID de la salle</h2>
+                <h2 data-i18n="join.enter_room_id">Entrez l'ID de la salle</h2>
                 
                 <div class="room-input-container">
-                    <input type="text" class="room-input" placeholder="ROOM-XXXX" id="roomIdInput">
-                    <button class="primary-btn" id="verifyBtn">Vérifier</button>
+                    <input type="text" class="room-input" placeholder="ROOM-XXXX" id="roomIdInput" data-i18n-placeholder="join.room_id_placeholder">
+                    <button class="primary-btn" id="verifyBtn" data-i18n="join.verify">Vérifier</button>
                 </div>
                 
-                <p class="error-message" id="errorMessage">ID invalide ou salle non trouvée</p>
+                <p class="error-message" id="errorMessage" data-i18n="join.invalid_room">ID invalide ou salle non trouvée</p>
                 
                 <div class="room-id-display" id="roomIdDisplay">
-                    <h3>Salle trouvée !</h3>
+                    <h3 data-i18n="join.room_found">Salle trouvée !</h3>
                     <div class="room-id-container">
                         <span class="room-id" id="roomIdValue"></span>
                         <button class="copy-btn" id="copyRoomIdBtn">📋</button>
                     </div>
                 </div>
                  <div class="room-input-container">
-                    <input type="text" class="room-input" placeholder="Ton pseudo" id="playerInput">
+                    <input type="text" class="room-input" placeholder="Ton pseudo" id="playerInput" data-i18n-placeholder="join.pseudo_placeholder">
                 </div>
                 <div class="players-section" id="playersSection">
-                    <h3>Joueurs dans la salle (<span id="playerCount">0</span>/10)</h3>
+                    <h3><span data-i18n="join.players_in_room">Joueurs dans la salle</span> (<span id="playerCount">0</span>/10)</h3>
                     <div class="players-grid" id="playersGrid">
                         <!-- Les cartes des joueurs seront ajoutées ici dynamiquement -->
                     </div>
@@ -502,16 +504,21 @@
             </div>
             
             <div class="next-btn-container">
-                <button id="joinNext" class="next-btn disabled" disabled>Attente...</button>
+                <button id="joinNext" class="next-btn disabled" disabled data-i18n="join.waiting">Attente...</button>
             </div>
         </div>
     </div>
    
 
     <!-- Confirmation de copie -->
-    <div class="copy-confirmation">ID copié dans le presse-papiers !</div>
+    <div class="copy-confirmation" data-i18n="join.id_copied">ID copié dans le presse-papiers !</div>
     <script>
 document.addEventListener('DOMContentLoaded', function () {
+  if (!window.i18n?.ensureLanguageSelected?.()) {
+    window.location.href = '/';
+    return;
+  }
+
   const socket = io();
   socket.on('connect', () => console.log('Socket connecté:', socket.id));
   socket.on('connect_error', e => console.warn('connect_error:', e));
@@ -519,10 +526,10 @@ document.addEventListener('DOMContentLoaded', function () {
     console.warn('server error event:', e);
     // Utiliser un toast au lieu du message d'erreur en texte brut
     if (e?.msg) {
-      showNotification(e.msg, 'error');
+      showNotification(window.i18n?.serverMessage?.(e.msg) || e.msg, 'error');
     }
     verifyBtn.disabled = false;
-    verifyBtn.textContent = 'Vérifier';
+    verifyBtn.textContent = t('join.verify');
   });
 
 
@@ -576,48 +583,48 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Laisse le bouton en "Attente..." (le joueur ne démarre pas la partie)
     const needed = Math.max(0, 3 - players.length);
-    joinNextBtn.textContent = needed > 0 ? `En attente de ${needed} joueur${needed>1?'s':''}...` : 'Démarrage imminent';
+    joinNextBtn.textContent = needed > 0 ? t('join.waiting_for_players', { count: needed }) : t('join.starting_soon');
     joinNextBtn.classList.add('disabled');
     joinNextBtn.disabled = true;
   });
 
 verifyBtn.addEventListener('click', function () {
   verifyBtn.disabled = true;
-  verifyBtn.textContent = 'Vérification...';
+  verifyBtn.textContent = t('join.verifying');
 
   const roomId = roomIdInput.value.trim().toUpperCase();
   const playerName = (playerInput?.value || '').trim();
   
   // Validation du pseudo
   if (!playerName) {
-    showNotification('Veuillez entrer un pseudo avant de rejoindre !', 'warning');
+    showNotification(t('join.enter_pseudo'), 'warning');
     verifyBtn.disabled = false;
-    verifyBtn.textContent = 'Vérifier';
+    verifyBtn.textContent = t('join.verify');
     if (playerInput) playerInput.focus();
     return;
   }
   
   if (playerName.length < 2) {
-    showNotification('Le pseudo doit contenir au moins 2 caractères !', 'warning');
+    showNotification(t('join.pseudo_min'), 'warning');
     verifyBtn.disabled = false;
-    verifyBtn.textContent = 'Vérifier';
+    verifyBtn.textContent = t('join.verify');
     if (playerInput) playerInput.focus();
     return;
   }
 
   if (playerName.length > 20 || /[<>&"'`]/.test(playerName)) {
-    showNotification('Le pseudo contient des caractères interdits ou dépasse 20 caractères.', 'warning');
+    showNotification(t('room.name_invalid'), 'warning');
     verifyBtn.disabled = false;
-    verifyBtn.textContent = 'Vérifier';
+    verifyBtn.textContent = t('join.verify');
     if (playerInput) playerInput.focus();
     return;
   }
   
   // Validation du code de salle
   if (!roomId || !roomId.startsWith('ROOM-')) {
-    showNotification('⚠️ Veuillez entrer un code de salle valide (ROOM-XXXX) !', 'warning');
+    showNotification(t('join.enter_valid_code'), 'warning');
     verifyBtn.disabled = false;
-    verifyBtn.textContent = 'Vérifier';
+    verifyBtn.textContent = t('join.verify');
     roomIdInput.focus();
     return;
   }
@@ -629,9 +636,9 @@ verifyBtn.addEventListener('click', function () {
     .then(res => { if (!res.ok) throw new Error(); return res.json(); })
     .then(({ roomId: validId, status }) => {
       if (status !== 'waiting') {
-        showNotification('La partie a déjà démarré — impossible de rejoindre.', 'error');
+        showNotification(t('join.game_already_started'), 'error');
         verifyBtn.disabled = false;
-        verifyBtn.textContent = 'Vérifier';
+        verifyBtn.textContent = t('join.verify');
         return;
       }
 
@@ -654,9 +661,9 @@ verifyBtn.addEventListener('click', function () {
       }));
     })
     .catch(() => {
-      showNotification('ID invalide ou salle non trouvée', 'error');
+      showNotification(t('join.invalid_room'), 'error');
       verifyBtn.disabled = false;
-      verifyBtn.textContent = 'Vérifier';
+      verifyBtn.textContent = t('join.verify');
     });
 });
 
@@ -664,7 +671,7 @@ verifyBtn.addEventListener('click', function () {
   socket.on('server:error', (payload) => {
     // Afficher toutes les erreurs serveur comme notifications
     if (payload?.msg) {
-      showNotification(payload.msg, 'error');
+      showNotification(window.i18n?.serverMessage?.(payload.msg) || payload.msg, 'error');
       
       // Si c'est une erreur de pseudo (déjà utilisé ou invalide), réactiver le formulaire
       if (payload.msg.includes('déjà utilisé') || payload.msg.includes('pseudo') || payload.msg.includes('caractères')) {
@@ -677,7 +684,7 @@ verifyBtn.addEventListener('click', function () {
         roomIdDisplay.style.display = 'none';
         verifyBtn.style.display = 'inline-flex';
         verifyBtn.disabled = false;
-        verifyBtn.textContent = 'Vérifier';
+        verifyBtn.textContent = t('join.verify');
         
         // Focus et sélection pour faciliter la modification
         setTimeout(() => {
