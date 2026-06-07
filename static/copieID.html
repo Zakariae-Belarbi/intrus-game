@@ -519,7 +519,7 @@ document.addEventListener('DOMContentLoaded', function () {
     return;
   }
 
-  const socket = io();
+  const socket = io({ transports: ['websocket'] });
   socket.on('connect', () => console.log('Socket connecté:', socket.id));
   socket.on('connect_error', e => console.warn('connect_error:', e));
   socket.on('error', (e) => {
@@ -568,6 +568,7 @@ document.addEventListener('DOMContentLoaded', function () {
   // MAJ joueurs reçue du serveur
   socket.on('room:update', list => {
     players = list;
+    const activePlayers = players.filter(p => !p.offline);
     playersSection.style.display = 'block';
     playersGrid.innerHTML = '';
     players.forEach(p => {
@@ -579,10 +580,10 @@ document.addEventListener('DOMContentLoaded', function () {
       `;
       playersGrid.appendChild(card);
     });
-    playerCountElement.textContent = players.length;
+    playerCountElement.textContent = activePlayers.length;
 
     // Laisse le bouton en "Attente..." (le joueur ne démarre pas la partie)
-    const needed = Math.max(0, 3 - players.length);
+    const needed = Math.max(0, 3 - activePlayers.length);
     joinNextBtn.textContent = needed > 0 ? t('join.waiting_for_players', { count: needed }) : t('join.starting_soon');
     joinNextBtn.classList.add('disabled');
     joinNextBtn.disabled = true;

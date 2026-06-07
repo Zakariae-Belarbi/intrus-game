@@ -475,7 +475,7 @@ document.addEventListener('DOMContentLoaded', () => {
     return;
   }
 
-  const socket = io();
+  const socket = io({ transports: ['websocket'] });
 
   // DOM
   const roomIdEl       = document.querySelector('.room-id');
@@ -492,9 +492,14 @@ document.addEventListener('DOMContentLoaded', () => {
   let hostAdded     = false;
   let myName        = null;   // <= mémorisé pour /game
   let myAvatar      = null;   // <= mémorisé pour /game
+  let hostToken     = null;
 
   const animalEmojis = ['🐶','🐱','🐭','🐹','🐰','🦊','🐻','🐼','🐨','🐯','🦁','🐮','🐷','🐸','🐵','🐔','🐧','🐦','🦉','🦄','🐴','🦋','🐢','🐍','🦖'];
   const randomAnimal = () => animalEmojis[Math.floor(Math.random() * animalEmojis.length)];
+  const makeToken = () => {
+    if (window.crypto?.randomUUID) return window.crypto.randomUUID();
+    return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  };
   const escapeHTML = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({
     '&': '&amp;',
     '<': '&lt;',
@@ -508,6 +513,8 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       const { roomId } = await fetch('/api/rooms', { method: 'POST' }).then(r => r.json());
       currentRoomId = roomId;
+      hostToken = sessionStorage.getItem(`intrus_host_token_${roomId}`) || makeToken();
+      sessionStorage.setItem(`intrus_host_token_${roomId}`, hostToken);
       roomIdEl.textContent = roomId;
     } catch (e) {
       alert(t('create.room_create_error'));
@@ -551,7 +558,7 @@ document.addEventListener('DOMContentLoaded', () => {
     myName   = name;            // <<< mémoire
     myAvatar = randomAnimal();  // <<< mémoire
 
-    socket.emit('room:create', { roomId: currentRoomId, name: myName, avatar: myAvatar });
+    socket.emit('room:create', { roomId: currentRoomId, name: myName, avatar: myAvatar, hostToken });
     hostAdded = true;
 
     nameInput.disabled = true;
@@ -604,6 +611,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // 4) Mises à jour des joueurs
   socket.on('room:update', (players) => {
+    const activePlayers = players.filter(p => !p.offline);
     playersSection.style.display = 'block';
     playersGrid.innerHTML = '';
     players.forEach(p => {
@@ -615,8 +623,8 @@ document.addEventListener('DOMContentLoaded', () => {
       `;
       playersGrid.appendChild(card);
     });
-    playerCountEl.textContent = players.length;
-    updateStartBtn(players.length);
+    playerCountEl.textContent = activePlayers.length;
+    updateStartBtn(activePlayers.length);
   });
 
   function updateStartBtn(count) {
@@ -636,7 +644,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // 5) Démarrer (seul l’hôte)
   startBtn.addEventListener('click', () => {
     if (startBtn.disabled || !currentRoomId) return;
-    socket.emit('room:start', { roomId: currentRoomId });
+    socket.emit('room:start', { roomId: currentRoomId, hostToken });
   });
 
   // 6) Quand ça démarre -> stocke EXACTEMENT le même nom/avatar puis /game
@@ -645,13 +653,19 @@ document.addEventListener('DOMContentLoaded', () => {
       roomId,
       name:   myName,     // <<< PAS nameInput.value
       avatar: myAvatar,   // <<< PAS un emoji fixe
-      lang: window.i18n?.getLanguage?.() || 'fr'
+      lang: window.i18n?.getLanguage?.() || 'fr',
+      hostToken
     }));
     window.location.href = '/game';
   });
 
   // Logs
-  socket.on('connect',       () => console.log('[socket] connecté:', socket.id));
+  socket.on('connect',       () => {
+    console.log('[socket] connecté:', socket.id);
+    if (hostAdded && currentRoomId && myName && myAvatar) {
+      socket.emit('room:create', { roomId: currentRoomId, name: myName, avatar: myAvatar, hostToken });
+    }
+  });
   socket.on('connect_error', (e) => console.warn('[socket] connect_error:', e));
   socket.on('error',         (e) => console.warn('[server error]:', e));
 });

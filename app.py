@@ -51,16 +51,27 @@ FORBIDDEN_TEXT_CHARS = set("<>&\"'`")
 # Utils
 # ---------------------------------------------------------------------
 def gen_room_id() -> str:
-    return 'ROOM-' + ''.join(random.choices(string.ascii_uppercase + string.digits, k=4))
+    while True:
+        room_id = 'ROOM-' + ''.join(random.choices(string.ascii_uppercase + string.digits, k=4))
+        if room_id not in rooms:
+            return room_id
 
 def _player_in_room(room: dict, sid: str) -> bool:
     return any(p["id"] == sid for p in room["players"])
+
+def _host_token_matches(room: dict, token: str) -> bool:
+    expected = str(room.get("host_token") or "")
+    token = str(token or "")
+    return bool(expected and token and expected == token)
 
 def _public_players(room):
     return [
         {"id": p.get("id"), "name": p.get("name"), "avatar": p.get("avatar"), "offline": p.get("offline", False)}
         for p in room.get("players", [])
     ]
+
+def _online_players(room):
+    return [p for p in room.get("players", []) if not p.get("offline")]
 
 def build_turns(player_sids):
     sids = list(player_sids)
@@ -927,7 +938,14 @@ def health():
 @app.route('/api/rooms', methods=['POST'])
 def create_room():
     room_id = gen_room_id()
-    rooms[room_id] = {'id': room_id, 'players': [], 'status': 'waiting', 'host_id': None}
+    rooms[room_id] = {
+        'id': room_id,
+        'players': [],
+        'status': 'waiting',
+        'host_id': None,
+        'host_token': None,
+        'host_name': None
+    }
     return jsonify(roomId=room_id), 201
 
 @app.route('/api/rooms/<room_id>', methods=['GET'])
@@ -935,7 +953,7 @@ def check_room(room_id):
     room = rooms.get(room_id)
     if not room:
         abort(404, description="Salle introuvable")
-    return jsonify(roomId=room['id'], playerCount=len(room['players']), status=room['status'])
+    return jsonify(roomId=room['id'], playerCount=len(_online_players(room)), status=room['status'])
 
 # ---------------------------------------------------------------------
 # Socket.IO
@@ -991,7 +1009,14 @@ def on_disconnect():
                             'canContinue': True
                         }, room=room_id)
                 else:
-                    room['players'] = [pl for pl in room['players'] if pl['id'] != request.sid]
+                    if room.get('host_id') == request.sid:
+                        p['offline'] = True
+                        room['host_id'] = None
+                    else:
+                        room['players'] = [pl for pl in room['players'] if pl['id'] != request.sid]
+                        if not room['players']:
+                            room['host_name'] = None
+                            room['host_token'] = None
                     leave_room(room_id)
                     socketio.emit('room:update', _public_players(room), room=room_id)
                 break
@@ -1008,6 +1033,7 @@ def on_room_create(data):
     room_id = data.get('roomId')
     name, name_error = _validate_player_name(data.get('name'))
     avatar = _clean_avatar(data.get('avatar'))
+    host_token = str(data.get('hostToken') or '').strip()[:80]
     
     # Validation du pseudo
     if name_error:
@@ -1021,16 +1047,53 @@ def on_room_create(data):
     if room['status'] != 'waiting':
         socketio.emit('server:error', {'msg': 'La partie a déjà commencé'}, room=request.sid)
         return
-    if len(room['players']) >= MAX_PLAYERS:
-        socketio.emit('server:error', {'msg': 'Salle pleine'}, room=request.sid)
+    existing = next((p for p in room['players'] if (p.get('name') or '').strip().lower() == name.lower()), None)
+    is_known_host = _host_token_matches(room, host_token)
+    active_host = next((p for p in room['players'] if p.get('id') == room.get('host_id') and not p.get('offline')), None)
+
+    if is_known_host and active_host and active_host is not existing:
+        old_sid = active_host['id']
+        active_host['id'] = request.sid
+        active_host['name'] = name
+        active_host['avatar'] = avatar
+        active_host['offline'] = False
+        room['host_id'] = request.sid
+        room['host_name'] = name
+        if old_sid != request.sid and room.get('game'):
+            _relink_sid(room, old_sid, request.sid)
+        join_room(room_id)
+        socketio.emit('room:update', _public_players(room), room=room_id)
         return
-    
-    # Vérification de l'unicité du pseudo
-    if any(p['name'].strip().lower() == name.lower() for p in room['players']):
+
+    if existing and is_known_host:
+        old_sid = existing['id']
+        existing['id'] = request.sid
+        existing['avatar'] = avatar
+        existing['offline'] = False
+        room['host_id'] = request.sid
+        room['host_name'] = name
+        if old_sid != request.sid and room.get('game'):
+            _relink_sid(room, old_sid, request.sid)
+        join_room(room_id)
+        socketio.emit('room:update', _public_players(room), room=room_id)
+        return
+
+    if existing:
         socketio.emit('server:error', {'msg': f'Le pseudo "{name}" est déjà utilisé. Choisissez-en un autre.'}, room=request.sid)
         return
 
-    room['host_id'] = room.get('host_id') or request.sid
+    if len(_online_players(room)) >= MAX_PLAYERS:
+        socketio.emit('server:error', {'msg': 'Salle pleine'}, room=request.sid)
+        return
+
+    if not active_host:
+        room['host_id'] = request.sid
+        room['host_name'] = name
+        room['host_token'] = host_token or room.get('host_token')
+    elif not is_known_host:
+        socketio.emit('server:error', {'msg': "Seul l'hôte peut démarrer."}, room=request.sid)
+        return
+
     if not _player_in_room(room, request.sid):
         room['players'].append({'id': request.sid, 'name': name, 'avatar': avatar, 'offline': False})
     join_room(room_id)
@@ -1086,7 +1149,7 @@ def on_room_join(data):
     if room['status'] != 'waiting':
         socketio.emit('server:error', {'msg': 'Impossible de rejoindre, partie déjà démarrée'}, room=request.sid)
         return
-    if len(room['players']) >= MAX_PLAYERS:
+    if len(_online_players(room)) >= MAX_PLAYERS:
         socketio.emit('server:error', {'msg': 'Salle pleine'}, room=request.sid)
         return
     
@@ -1105,7 +1168,9 @@ def _initialize_new_game(room_id):
     if not room:
         return False
     
-    players = room['players']
+    players = _online_players(room)
+    if len(players) < 3:
+        return False
     sids = [p['id'] for p in players]
 
     animal = random.choice(ANIMALS)
@@ -1146,15 +1211,26 @@ def _initialize_new_game(room_id):
 @socketio.on('room:start')
 def on_room_start(data):
     room_id = (data.get('roomId') if isinstance(data, dict) else data) or None
+    host_token = str(data.get('hostToken') or '').strip()[:80] if isinstance(data, dict) else ''
     room = rooms.get(room_id)
     if not room:
         socketio.emit('server:error', {'msg': 'Salle introuvable'}, room=request.sid); return
-    if request.sid != room.get('host_id'):
+    if request.sid != room.get('host_id') and not _host_token_matches(room, host_token):
         socketio.emit('server:error', {'msg': "Seul l'hôte peut démarrer."}, room=request.sid); return
-    if len(room['players']) < 3:
+    if _host_token_matches(room, host_token):
+        room['host_id'] = request.sid
+        host = next((p for p in room['players'] if (p.get('name') or '') == room.get('host_name')), None)
+        if host:
+            old_sid = host['id']
+            host['id'] = request.sid
+            host['offline'] = False
+            if old_sid != request.sid and room.get('game'):
+                _relink_sid(room, old_sid, request.sid)
+    if len(_online_players(room)) < 3:
         socketio.emit('server:error', {'msg': 'Au moins 3 joueurs requis (min 3).'}, room=request.sid); return
 
-    _initialize_new_game(room_id)
+    if not _initialize_new_game(room_id):
+        socketio.emit('server:error', {'msg': 'Au moins 3 joueurs requis (min 3).'}, room=request.sid)
 
 # ---------------- Ready Check (tous les joueurs prêts) ----------------
 @socketio.on('player:ready')

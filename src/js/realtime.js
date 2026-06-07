@@ -3,7 +3,7 @@
   'use strict';
 
   // -------- logging / helpers
-  const DEBUG = true;
+  const DEBUG = false;
   const L = (ev, data) => DEBUG && console.log(`[SOCKET] ${ev}`, data);
   let __lastTurn = null;
 
@@ -62,7 +62,7 @@
   }
 
   // -------- socket
-  const socket = io();
+  const socket = io({ transports: ['websocket'] });
   window.socket = socket;
   window.gameState?.setMode?.('online');
 
